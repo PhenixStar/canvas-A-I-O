@@ -144,6 +144,7 @@
     "overrides": {
         "@openrouter/ai-sdk-provider": {
             "ai": "^6.0.1"
-        }
+        },
+        "fast-xml-parser": "^5.2.5"
     }
 }
