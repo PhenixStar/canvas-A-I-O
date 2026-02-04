@@ -1,0 +1,11 @@
+﻿{
+    "name": "canvas-a-i-o",
+    "version": "1.0.0",
+    "description": "AI-powered Draw.io diagram generation with real-time browser preview. Create flowcharts, architecture diagrams, and more through natural language.",
+    "author": {
+        "name": "DayuanJiang"
+    },
+    "repository": "https://github.com/PhenixStar/canvas-A-I-O",
+    "homepage": "https://canvas-a-i-o.jiang.jp",
+    "license": "Apache-2.0"
+}

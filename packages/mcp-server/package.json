@@ -1,0 +1,55 @@
+﻿{
+    "name": "@canvas-a-i-o/mcp-server",
+    "version": "0.1.15",
+    "description": "MCP server for AIO Canvas - AI-powered diagram generation with real-time browser preview",
+    "type": "module",
+    "main": "dist/index.js",
+    "bin": {
+        "canvas-a-i-o-mcp": "./dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsx watch src/index.ts",
+        "start": "node dist/index.js",
+        "prepublishOnly": "npm run build"
+    },
+    "keywords": [
+        "mcp",
+        "drawio",
+        "diagram",
+        "ai",
+        "claude",
+        "model-context-protocol"
+    ],
+    "author": "DayuanJiang",
+    "license": "Apache-2.0",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/PhenixStar/canvas-A-I-O",
+        "directory": "packages/mcp-server"
+    },
+    "homepage": "https://canvas-a-i-o.jiang.jp",
+    "bugs": {
+        "url": "https://github.com/PhenixStar/canvas-A-I-O/issues"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.0.4",
+        "linkedom": "^0.18.0",
+        "open": "^11.0.0",
+        "zod": "^4.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^24.0.0",
+        "tsx": "^4.19.0",
+        "typescript": "^5"
+    },
+    "engines": {
+        "node": ">=18"
+    },
+    "files": [
+        "dist"
+    ]
+}
