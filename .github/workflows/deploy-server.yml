@@ -130,77 +130,15 @@ jobs:
             docker-compose -f docker-compose.prod.yml up -d
             docker image prune -f
 
-            # Wait for containers to be healthy
+            # Wait for containers to start
             echo "Waiting for containers to start..."
             sleep 10
             docker ps
           ENDSSH
 
-      - name: Deploy to Cloudflare DNS
-        env:
-          CF_ZONE_ID: 6a5446ecfbb65345da5cd84a2339352a
-        run: |
-          # Check if DNS record already exists
-          EXISTING=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=draw.nulled.ai&type=A" \
-            -H "X-Auth-Email: ${{ secrets.CF_EMAIL }}" \
-            -H "X-Auth-Key: ${{ secrets.CF_API_KEY }}")
-
-          RECORD_ID=$(echo "$EXISTING" | jq -r '.result[0].id // empty')
-          RECORD_IP=$(echo "$EXISTING" | jq -r '.result[0].content // empty')
-
-          echo "Existing record ID: $RECORD_ID"
-          echo "Existing IP: $RECORD_IP"
-
-          if [[ -n "$RECORD_ID" && "$RECORD_ID" != "null" && "$RECORD_ID" != "empty" ]]; then
-            # Update existing record if IP changed
-            if [[ "$RECORD_IP" != "209.38.58.83" ]]; then
-              echo "Updating existing DNS record..."
-              curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records/$RECORD_ID" \
-                -H "X-Auth-Email: ${{ secrets.CF_EMAIL }}" \
-                -H "X-Auth-Key: ${{ secrets.CF_API_KEY }}" \
-                -H "Content-Type: application/json" \
-                -d '{
-                  "type": "A",
-                  "name": "draw",
-                  "content": "209.38.58.83",
-                  "ttl": 1,
-                  "proxied": true
-                }' | jq '.'
-              echo "DNS record updated successfully"
-            else
-              echo "DNS record already exists with correct IP"
-            fi
-          else
-            # Create new DNS record
-            echo "Creating new DNS record..."
-            curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
-              -H "X-Auth-Email: ${{ secrets.CF_EMAIL }}" \
-              -H "X-Auth-Key: ${{ secrets.CF_API_KEY }}" \
-              -H "Content-Type: application/json" \
-              -d '{
-                "type": "A",
-                "name": "draw",
-                "content": "209.38.58.83",
-                "ttl": 1,
-                "proxied": true
-              }' | jq '.'
-            echo "DNS record created successfully"
-          fi
-
       - name: Verify Deployment
         run: |
-          echo "Checking DNS propagation..."
-          sleep 5
-
-          # Verify DNS resolution
-          DNS_RESULT=$(dig +short draw.nulled.ai @8.8.8.8)
-          echo "DNS resolves to: $DNS_RESULT"
-
-          if [[ "$DNS_RESULT" == *"209.38.58.83"* ]] || [[ "$DNS_RESULT" == *"cloudflare"* ]]; then
-            echo "✅ DNS propagation successful"
-          else
-            echo "⚠️ DNS may still be propagating"
-          fi
+          echo "Verifying container health..."
 
           # Verify container health
           ssh -p 2222 -i ~/.ssh/id_ed25519 alaa@209.38.58.83 << 'ENDSSH'
@@ -218,4 +156,15 @@ jobs:
 
           echo ""
           echo "✅ Deployment complete!"
-          echo "🌐 Access your application at: https://draw.nulled.ai"
+          echo ""
+          echo "📋 IMPORTANT: Manual DNS setup required"
+          echo "   1. Login to Cloudflare Dashboard"
+          echo "   2. Select 'nulled.ai' zone"
+          echo "   3. Add DNS record:"
+          echo "      - Type: A"
+          echo "      - Name: draw"
+          echo "      - IPv4: 209.38.58.83"
+          echo "      - Proxy: ✅ Enabled (orange cloud)"
+          echo "      - TTL: Auto"
+          echo ""
+          echo "🌐 After DNS propagates, access at: https://draw.nulled.ai"

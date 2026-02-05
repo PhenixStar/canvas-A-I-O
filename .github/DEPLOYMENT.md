@@ -2,45 +2,54 @@
 
 ## Overview
 
-This document describes the automated deployment pipeline for canvas-A-I-O to production server with Cloudflare DNS and Caddy reverse proxy.
+Automated deployment pipeline for canvas-A-I-O with Caddy reverse proxy and HTTPS.
 
 ## Architecture
 
 ```
 Internet
    ↓
-Cloudflare (DDoS, CDN, SSL Termination) - draw.nulled.ai
+Cloudflare DNS (Manual Setup) - draw.nulled.ai
    ↓
 Caddy Reverse Proxy (Port 443) - 209.38.58.83
    ↓
 canvas-a-i-o App (Internal Port 3000)
 ```
 
-## Required GitHub Secrets
+## DNS Setup (Manual - One Time)
 
-Configure these secrets in your GitHub repository settings:
+### Step 1: Login to Cloudflare Dashboard
 
-| Secret | Value | Description |
-|--------|-------|-------------|
-| `SSH_PRIVATE_KEY` | Your SSH private key content | SSH key for server access (id_ed25519) |
-| `CF_EMAIL` | aqweider@gmail.com | Cloudflare account email |
-| `CF_API_KEY` | Your Cloudflare Global API Key | From Cloudflare Dashboard → My Profile → API Tokens |
+Navigate to: https://dash.cloudflare.com/
 
-### How to Add Secrets
+### Step 2: Select Zone
 
-1. Go to your repository on GitHub
-2. Settings → Secrets and variables → Actions
-3. Click "New repository secret"
-4. Add each secret from the table above
+Choose `nulled.ai` from your zones list.
 
-### Getting Cloudflare API Key
+### Step 3: Add DNS Record
 
-1. Login to [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. Click your profile → "My Profile"
-3. Scroll to "API Tokens" section
-4. Click "View" next to Global API Key
-5. Verify your password
-6. Copy the API Key
+Go to **DNS** → **Records** → **Add record**
+
+| Field | Value |
+|-------|-------|
+| **Type** | A |
+| **Name** | draw |
+| **IPv4 address** | 209.38.58.83 |
+| **Proxy status** | ✅ Proxied (orange cloud) |
+| **TTL** | Auto |
+
+### Step 4: Save
+
+Click **Save**. DNS propagation typically takes 5-10 minutes globally.
+
+### Verify DNS Propagation
+
+```bash
+# Check DNS resolution
+dig draw.nulled.ai
+
+# Should return Cloudflare IPs
+```
 
 ## Deployment Process
 
@@ -53,23 +62,18 @@ The `.github/workflows/deploy-server.yml` workflow automatically:
    - Starts Watchtower for automatic updates
    - Configures internal Docker networking
 
-2. **Configures Cloudflare DNS:**
-   - Creates/updates A record: `draw.nulled.ai` → `209.38.58.83`
-   - Enables Cloudflare proxy (DDoS protection, caching)
-   - Idempotent: safe to run multiple times
-
-3. **Verifies Deployment:**
-   - Checks DNS propagation
-   - Verifies container health
-   - Tests application endpoints
+2. **Verifies Deployment:**
+   - Checks container health status
+   - Tests Caddy admin API
+   - Tests application health endpoint
 
 ## Manual Deployment
 
 To trigger deployment manually:
 
-1. Go to Actions tab in GitHub
-2. Select "Deploy to Server" workflow
-3. Click "Run workflow" → Select branch → Click "Run workflow"
+1. Go to **Actions** tab in GitHub
+2. Select **Deploy to Server** workflow
+3. Click **Run workflow** → Select branch → Click **Run workflow**
 
 ## Automatic Deployment
 
@@ -140,44 +144,48 @@ dig @8.8.8.8 draw.nulled.ai
 dig @1.1.1.1 draw.nulled.ai
 ```
 
-### Manual DNS Update (if automation fails)
+### Test SSL Certificate
 
 ```bash
-# Use existing cf-dns.sh script
-cd /d/AI/mapping-config/services/cloudflare/scripts
-./cf-dns.sh add draw 209.38.58.83 -z nulled.ai
+# Check certificate validity
+curl -I https://draw.nulled.ai
+
+# Should show 200 OK with SSL/TLS
 ```
 
 ## Rollback Procedure
 
 If deployment causes issues:
 
-1. **Via Cloudflare Dashboard:**
-   - Login to Cloudflare
-   - Select `nulled.ai` zone
-   - Delete or disable `draw` DNS record
+### 1. Via Cloudflare Dashboard:
 
-2. **Via Server:**
-   ```bash
-   ssh -p 2222 -i ~/.ssh/id_ed25519 alaa@209.38.58.83
-   cd /srv/canvas-a-i-o
-   docker-compose -f docker-compose.prod.yml down
-   # Restore previous configuration
-   ```
+- Login to Cloudflare
+- Select `nulled.ai` zone
+- Delete or disable `draw` DNS record
 
-3. **Revert Workflow:**
-   - Go to GitHub Actions
-   - Find failed run
-   - Click "Re-run jobs"
+### 2. Via Server:
+
+```bash
+ssh -p 2222 -i ~/.ssh/id_ed25519 alaa@209.38.58.83
+cd /srv/canvas-a-i-o
+docker-compose -f docker-compose.prod.yml down
+# Restore previous configuration
+```
+
+### 3. Revert Workflow:
+
+- Go to GitHub Actions
+- Find failed run
+- Click **Re-run jobs**
 
 ## Security Considerations
 
 - ✅ All traffic encrypted via HTTPS
-- ✅ DDoS protection via Cloudflare
+- ✅ DDoS protection via Cloudflare proxy
 - ✅ Application not directly exposed (internal network only)
 - ✅ Security headers configured (HSTS, X-Frame-Options, etc.)
 - ✅ Automatic SSL certificate management by Caddy
-- ✅ SSH keys stored in GitHub Secrets (never in code)
+- ✅ SSH key stored in GitHub Secrets (never in code)
 
 ## Monitoring
 
@@ -195,6 +203,18 @@ If deployment causes issues:
 - High memory usage (>450MB)
 - DNS resolution failures
 - SSL certificate expiration
+
+## Update IP Address
+
+If server IP changes:
+
+1. Update `deploy-server.yml` workflow with new IP
+2. Update Cloudflare DNS record:
+   - Go to DNS → Records
+   - Find `draw` record
+   - Click **Edit**
+   - Update IPv4 address
+   - Click **Save**
 
 ## Future Improvements
 
