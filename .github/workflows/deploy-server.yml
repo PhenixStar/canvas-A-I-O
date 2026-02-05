@@ -19,12 +19,203 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -p 2222 209.38.58.83 >> ~/.ssh/known_hosts
 
-      - name: Authenticate and Deploy
+      - name: Deploy Application and Caddy
         run: |
           ssh -p 2222 -i ~/.ssh/id_ed25519 alaa@209.38.58.83 << 'ENDSSH'
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u PhenixStar --password-stdin
             cd /srv/canvas-a-i-o
-            docker-compose pull
-            docker-compose up -d
+
+            # Create production docker-compose file
+            cat > docker-compose.prod.yml << 'EOF'
+          services:
+            canvas-a-i-o:
+              image: ghcr.io/phenixstar/canvas-a-i-o:latest
+              container_name: canvas-a-i-o
+              restart: unless-stopped
+              networks:
+                - canvas-network
+              mem_limit: 256m
+              environment:
+                - NODE_ENV=production
+                - PORT=3000
+                - NEXT_PUBLIC_SHOW_ABOUT_AND_NOTICE=true
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+                start_period: 40s
+
+            caddy:
+              image: caddy:latest
+              container_name: caddy
+              restart: unless-stopped
+              ports:
+                - "80:80"
+                - "443:443"
+              volumes:
+                - ./Caddyfile:/etc/caddy/Caddyfile:ro
+                - caddy_data:/data
+                - caddy_config:/config
+                - caddy_logs:/logs
+              networks:
+                - canvas-network
+              mem_limit: 64m
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:2019/config/"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+
+            watchtower:
+              image: containrrr/watchtower:latest
+              container_name: watchtower
+              volumes:
+                - /var/run/docker.sock:/var/run/docker.sock
+              environment:
+                - WATCHTOWER_CLEANUP=true
+                - WATCHTOWER_POLL_INTERVAL=300
+                - WATCHTOWER_INCLUDE_STOPPED=false
+              networks:
+                - canvas-network
+              mem_limit: 64m
+              restart: unless-stopped
+
+          networks:
+            canvas-network:
+              driver: bridge
+
+          volumes:
+            caddy_data:
+            caddy_config:
+            caddy_logs:
+          EOF
+
+            # Create Caddyfile
+            cat > Caddyfile << 'EOF'
+          draw.nulled.ai {
+              reverse_proxy canvas-a-i-o:3000
+
+              header {
+                  X-Content-Type-Options "nosniff"
+                  X-Frame-Options "SAMEORIGIN"
+                  X-XSS-Protection "1; mode=block"
+                  Referrer-Policy "strict-origin-when-cross-origin"
+                  Permissions-Policy "geolocation=(), microphone=(), camera=()"
+              }
+
+              log {
+                  output file /logs/caddy-access.log {
+                      roll_size 100mb
+                      roll_keep 5
+                      roll_keep_for 720h
+                  }
+                  format json
+                  level INFO
+              }
+
+              handle /health {
+                  respond "OK" 200
+              }
+          }
+
+          http://draw.nulled.ai {
+              redir https://draw.nulled.ai{uri} permanent
+          }
+          EOF
+
+            # Stop old containers and start new stack
+            docker-compose down 2>/dev/null || true
+            docker-compose -f docker-compose.prod.yml pull
+            docker-compose -f docker-compose.prod.yml up -d
             docker image prune -f
+
+            # Wait for containers to be healthy
+            echo "Waiting for containers to start..."
+            sleep 10
+            docker ps
           ENDSSH
+
+      - name: Deploy to Cloudflare DNS
+        env:
+          CF_ZONE_ID: 6a5446ecfbb65345da5cd84a2339352a
+        run: |
+          # Check if DNS record already exists
+          EXISTING=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records?name=draw.nulled.ai&type=A" \
+            -H "X-Auth-Email: ${{ secrets.CF_EMAIL }}" \
+            -H "X-Auth-Key: ${{ secrets.CF_API_KEY }}")
+
+          RECORD_ID=$(echo "$EXISTING" | jq -r '.result[0].id // empty')
+          RECORD_IP=$(echo "$EXISTING" | jq -r '.result[0].content // empty')
+
+          echo "Existing record ID: $RECORD_ID"
+          echo "Existing IP: $RECORD_IP"
+
+          if [[ -n "$RECORD_ID" && "$RECORD_ID" != "null" && "$RECORD_ID" != "empty" ]]; then
+            # Update existing record if IP changed
+            if [[ "$RECORD_IP" != "209.38.58.83" ]]; then
+              echo "Updating existing DNS record..."
+              curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records/$RECORD_ID" \
+                -H "X-Auth-Email: ${{ secrets.CF_EMAIL }}" \
+                -H "X-Auth-Key: ${{ secrets.CF_API_KEY }}" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "type": "A",
+                  "name": "draw",
+                  "content": "209.38.58.83",
+                  "ttl": 1,
+                  "proxied": true
+                }' | jq '.'
+              echo "DNS record updated successfully"
+            else
+              echo "DNS record already exists with correct IP"
+            fi
+          else
+            # Create new DNS record
+            echo "Creating new DNS record..."
+            curl -s -X POST "https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records" \
+              -H "X-Auth-Email: ${{ secrets.CF_EMAIL }}" \
+              -H "X-Auth-Key: ${{ secrets.CF_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "type": "A",
+                "name": "draw",
+                "content": "209.38.58.83",
+                "ttl": 1,
+                "proxied": true
+              }' | jq '.'
+            echo "DNS record created successfully"
+          fi
+
+      - name: Verify Deployment
+        run: |
+          echo "Checking DNS propagation..."
+          sleep 5
+
+          # Verify DNS resolution
+          DNS_RESULT=$(dig +short draw.nulled.ai @8.8.8.8)
+          echo "DNS resolves to: $DNS_RESULT"
+
+          if [[ "$DNS_RESULT" == *"209.38.58.83"* ]] || [[ "$DNS_RESULT" == *"cloudflare"* ]]; then
+            echo "✅ DNS propagation successful"
+          else
+            echo "⚠️ DNS may still be propagating"
+          fi
+
+          # Verify container health
+          ssh -p 2222 -i ~/.ssh/id_ed25519 alaa@209.38.58.83 << 'ENDSSH'
+            echo "Container status:"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+            echo ""
+            echo "Caddy health check:"
+            docker exec caddy curl -s http://localhost:2019/config/ | jq '.apps.http.server'
+
+            echo ""
+            echo "Application health check:"
+            docker exec canvas-a-i-o curl -s http://localhost:3000/api/health || echo "Health endpoint not available"
+          ENDSSH
+
+          echo ""
+          echo "✅ Deployment complete!"
+          echo "🌐 Access your application at: https://draw.nulled.ai"

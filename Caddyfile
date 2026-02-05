@@ -1,0 +1,33 @@
+draw.nulled.ai {
+    reverse_proxy canvas-a-i-o:3000
+
+    # Security headers
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        X-XSS-Protection "1; mode=block"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    }
+
+    # Logging
+    log {
+        output file /logs/caddy-access.log {
+            roll_size 100mb
+            roll_keep 5
+            roll_keep_for 720h
+        }
+        format json
+        level INFO
+    }
+
+    # Health check endpoint for monitoring
+    handle /health {
+        respond "OK" 200
+    }
+}
+
+# HTTP to HTTPS redirect
+http://draw.nulled.ai {
+    redir https://draw.nulled.ai{uri} permanent
+}
