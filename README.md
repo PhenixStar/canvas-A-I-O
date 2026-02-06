@@ -8,7 +8,19 @@ English | [中文](./docs/cn/README_CN.md) | [日本語](./docs/ja/README_JA.md)
 [![Next.js](https://img.shields.io/badge/Next.js-16.x-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.x-61dafb)](https://react.dev/)
 
-A Next.js web application that integrates AI capabilities with draw.io diagrams. Create, modify, and enhance diagrams through natural language commands and AI-assisted visualization.
+# AIO Canvas - The AI-Powered draw.io Wrapper
+
+**AI-Powered Diagram Creation Tool - Chat, Draw, Visualize**
+
+**A wrapper and enhancement of draw.io with AI capabilities - Works as both web app and offline desktop application**
+
+English | [中文](./docs/cn/README_CN.md) | [日本語](./docs/ja/README_JA.md)
+
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Next.js](https://img.shields.io/badge/Next.js-16.x-black)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-19.x-61dafb)](https://react.dev/)
+
+AIO Canvas is an **AI-powered wrapper** around [draw.io](https://github.com/jgraph/drawio) that enhances the popular diagramming tool with natural language capabilities, making it possible to create, modify, and enhance diagrams through AI-powered commands while maintaining offline functionality through our Electron desktop app.
 
 ## Table of Contents
 
@@ -24,6 +36,13 @@ A Next.js web application that integrates AI capabilities with draw.io diagrams.
 
 ## Features
 
+### 🎯 Core Capabilities
+- **draw.io Integration**: Seamlessly wraps draw.io (https://github.com/jgraph/drawio) with AI-powered enhancements
+- **Offline Desktop App**: Full offline functionality through Electron desktop version (https://github.com/jgraph/drawio-desktop)
+- **Natural Language Commands**: Create and manipulate diagrams using simple text prompts
+- **Multi-Platform Support**: Works as web application (Vercel/Cloudflare) and standalone desktop app
+
+### 🤖 AI-Powered Features
 - **LLM-Powered Diagram Creation**: Leverage Large Language Models to create and manipulate draw.io diagrams directly through natural language commands
 - **Image-Based Diagram Replication**: Upload existing diagrams or images and have the AI replicate and enhance them automatically
 - **PDF & Text File Upload**: Upload PDF documents and text files to extract content and generate diagrams from existing documents
@@ -90,7 +109,21 @@ Open [http://localhost:6002](http://localhost:6002) in your browser.
 
 **Bring Your Own API Key**: Configure your provider and API key via the Settings icon in the chat panel. Keys are stored locally in your browser.
 
-### Available Scripts
+## Platform Support
+
+### 🌐 Web Application (Online)
+- Hosted on Vercel or Cloudflare
+- Real-time AI collaboration
+- Browser-based draw.io functionality
+- Cross-platform access
+
+### 💻 Desktop Application (Offline)
+- Electron-based desktop app
+- Full offline functionality
+- Native performance and integration
+- Windows, macOS, and Linux support
+
+## Available Scripts
 
 | Command | Description |
 |---------|-------------|
@@ -103,6 +136,15 @@ Open [http://localhost:6002](http://localhost:6002) in your browser.
 | `npm run dist` | Build desktop distributions |
 
 ## Deployment
+
+### 🌐 Production Instance
+
+**Live Deployment**: [https://draw.nulled.ai](https://draw.nulled.ai)
+
+- **Platform**: Docker containers with Caddy reverse proxy
+- **SSL**: Let's Encrypt (auto-renewing)
+- **Features**: Full AI diagram generation capabilities
+- **Status**: Production-ready
 
 ### Vercel
 
@@ -182,9 +224,9 @@ User Input → AI Provider → XML Generation → react-drawio Rendering → Dis
 
 ```
 canvas-A-I-O/
-├── app/                    # Next.js app router
+├── app/                    # Next.js app router (web application)
 ├── components/             # React components
-├── electron/               # Electron desktop app
+├── electron/               # Electron desktop app (offline wrapper)
 ├── lib/                    # Utility functions
 ├── hooks/                  # React hooks
 ├── packages/
@@ -192,6 +234,13 @@ canvas-A-I-O/
 │   └── claude-plugin/     # Claude plugin
 └── docs/                  # Documentation
 ```
+
+### Draw.io Integration Architecture
+AIO Canvas acts as an intelligent wrapper around draw.io, extending its capabilities with:
+- AI-powered diagram generation and modification
+- Natural language interface to draw.io XML
+- Enhanced export and import capabilities
+- Integration with multiple AI providers
 
 ## FAQ
 
