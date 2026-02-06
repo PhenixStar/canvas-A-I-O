@@ -726,6 +726,58 @@ sequenceDiagram
     D->>C: Show diagram
 ```
 
+### File Reading Implementation
+
+#### IPC Handlers for File Operations
+```typescript
+// electron/main/persistence-handlers.ts
+import fs from 'fs/promises';
+import path from 'path';
+
+// Read file content with security validation
+ipcMain.handle("persistence:read-file", async (_event, filePath: string) => {
+    const resolvedPath = path.resolve(filePath.trim());
+
+    // Security: Check file accessibility
+    await fs.access(resolvedPath);
+
+    // Read and return file content
+    const content = await fs.readFile(resolvedPath, "utf-8");
+    return { success: true, data: content, path: resolvedPath };
+});
+
+// Check if file exists
+ipcMain.handle("persistence:file-exists", async (_event, filePath: string) => {
+    try {
+        const resolvedPath = path.resolve(filePath.trim());
+        await fs.access(resolvedPath);
+        return true;
+    } catch {
+        return false;
+    }
+});
+```
+
+#### Preload API Exposure
+```typescript
+// electron/preload/persistence-api.ts
+export const persistenceAPI: PersistenceAPI = {
+    readFile: (filePath: string) =>
+        ipcRenderer.invoke("persistence:read-file", filePath),
+
+    fileExists: (filePath: string) =>
+        ipcRenderer.invoke("persistence:file-exists", filePath),
+
+    // ... other persistence operations
+};
+```
+
+#### Security Considerations
+- **Path Resolution**: Uses `path.resolve()` to prevent directory traversal attacks
+- **File Access Validation**: Checks file existence before reading
+- **Error Handling**: Graceful fallback with user-friendly error messages
+- **Dual-Mode Support**: Components work in both web (localStorage) and Electron (native APIs)
+
 ### Persistence Operation Flow
 ```mermaid
 sequenceDiagram

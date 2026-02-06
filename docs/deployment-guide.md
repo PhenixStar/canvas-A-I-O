@@ -477,15 +477,52 @@ sqlite3 /var/canvas-A-I-O/database.sqlite ".backup /backups/database_$DATE.sqlit
 
 ## Desktop Application Deployment
 
+### Current Status: ✅ Windows Build Complete
+
+**Built Executables**:
+- `Next AI Draw.io Setup 1.0.0.exe` (209MB) - NSIS installer
+- `Next AI Draw.io 1.0.0.exe` (209MB) - Portable version
+
+**Architectures**: x64, arm64 (both included)
+
+**Location**: `release/` directory
+
 ### Build Process
 
 1. **Install Dependencies**:
 ```bash
 npm install
-npm install electron-builder -D
 ```
 
-2. **Configure electron-builder**:
+2. **Build Commands**:
+
+**Windows Build**:
+```bash
+npm run dist:win:build
+```
+
+**macOS Build**:
+```bash
+npm run dist:mac:build
+```
+
+**Linux Build**:
+```bash
+npm run dist:linux:build
+```
+
+3. **Build Output**:
+```
+release/
+├── Next AI Draw.io Setup 1.0.0.exe        # Windows installer
+├── Next AI Draw.io 1.0.0.exe               # Windows portable
+├── Next AI Draw.io-1.0.0.dmg               # macOS installer (TBD)
+└── next-ai-draw-io-1.0.0.AppImage          # Linux portable (TBD)
+```
+
+### electron-builder Configuration
+
+**File**: `electron/electron-builder.yml`
 ```json
 {
   "build": {
