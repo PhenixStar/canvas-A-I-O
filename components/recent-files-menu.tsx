@@ -1,6 +1,9 @@
 "use client"
 
-import { memo } from "react"
+import { formatDistanceToNow } from "date-fns"
+import { Clock, Loader2 } from "lucide-react"
+import { memo, useState } from "react"
+import { toast } from "sonner"
 import Image from "@/components/image-with-basepath"
 import {
     DropdownMenu,
@@ -10,11 +13,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Clock } from "lucide-react"
 import { useDiagram } from "@/contexts/diagram-context"
 import { useDictionary } from "@/hooks/use-dictionary"
-import { formatMessage } from "@/lib/i18n/utils"
-import { formatDistanceToNow } from "date-fns"
 
 interface RecentFile {
     filePath: string
@@ -31,21 +31,54 @@ export const RecentFilesMenu = memo(function RecentFilesMenu({
     children,
 }: RecentFilesMenuProps) {
     const dict = useDictionary()
-    const { recentFilesState, loadDiagram } = useDiagram()
+    const { recentFilesState, loadDiagram, setCurrentDiagramId } = useDiagram()
+    const [loadingFile, setLoadingFile] = useState<string | null>(null)
 
     const { files, loading } = recentFilesState
 
-    const handleOpenFile = (file: RecentFile) => {
-        // For desktop files, we'd need to read from the file system
-        // For now, we'll just log it. In a full implementation,
-        // you'd call an Electron API to read the file content
-        console.log("Opening recent file:", file)
+    const handleOpenFile = async (file: RecentFile) => {
+        // Check if running in Electron
+        const isElectron =
+            typeof window !== "undefined" &&
+            (window as any).electronAPI?.isElectron
 
-        // TODO: Implement file opening logic
-        // This would involve:
-        // 1. Calling Electron API to read file content
-        // 2. Loading the XML into the diagram
-        // 3. Updating the current diagram ID
+        if (!isElectron) {
+            toast.error(
+                "Recent files are only available in the desktop application",
+            )
+            return
+        }
+
+        try {
+            setLoadingFile(file.filePath)
+
+            // Call Electron API to read file content
+            const result = await (
+                window as any
+            ).electronAPI.persistence.readFile(file.filePath)
+
+            if (result.success) {
+                // Load the diagram XML
+                loadDiagram(result.data, true)
+
+                // Update current diagram ID based on file path
+                const diagramId = file.filePath
+                setCurrentDiagramId(diagramId)
+
+                toast.success(`Opened ${file.fileName}`)
+            } else {
+                throw new Error("Failed to read file")
+            }
+        } catch (error) {
+            console.error("Failed to open recent file:", error)
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Failed to open file. It may have been moved or deleted.",
+            )
+        } finally {
+            setLoadingFile(null)
+        }
     }
 
     const formatFileName = (filePath: string): string => {
@@ -74,49 +107,59 @@ export const RecentFilesMenu = memo(function RecentFilesMenu({
                     </div>
                 ) : (
                     <div className="max-h-96 overflow-y-auto">
-                        {files.map((file, index) => (
-                            <DropdownMenuItem
-                                key={`${file.filePath}-${index}`}
-                                className="flex items-start gap-3 p-2 cursor-pointer"
-                                onClick={() => handleOpenFile(file)}
-                            >
-                                {file.thumbnail ? (
-                                    <div className="flex-shrink-0 w-16 h-12 bg-white rounded border overflow-hidden">
-                                        <Image
-                                            src={`data:image/svg+xml,${encodeURIComponent(
-                                                file.thumbnail,
-                                            )}`}
-                                            alt={formatFileName(file.filePath)}
-                                            width={64}
-                                            height={48}
-                                            className="object-contain w-full h-full"
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="flex-shrink-0 w-16 h-12 bg-muted rounded flex items-center justify-center">
-                                        <Clock className="h-6 w-6 text-muted-foreground" />
-                                    </div>
-                                )}
+                        {files.map((file, index) => {
+                            const isLoading = loadingFile === file.filePath
 
-                                <div className="flex-1 min-w-0">
-                                    <div className="text-sm font-medium truncate">
-                                        {file.fileName ||
-                                            formatFileName(file.filePath)}
+                            return (
+                                <DropdownMenuItem
+                                    key={`${file.filePath}-${index}`}
+                                    className="flex items-start gap-3 p-2 cursor-pointer"
+                                    onClick={() => handleOpenFile(file)}
+                                    disabled={isLoading}
+                                >
+                                    {file.thumbnail ? (
+                                        <div className="flex-shrink-0 w-16 h-12 bg-white rounded border overflow-hidden">
+                                            <Image
+                                                src={`data:image/svg+xml,${encodeURIComponent(
+                                                    file.thumbnail,
+                                                )}`}
+                                                alt={formatFileName(
+                                                    file.filePath,
+                                                )}
+                                                width={64}
+                                                height={48}
+                                                className="object-contain w-full h-full"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="flex-shrink-0 w-16 h-12 bg-muted rounded flex items-center justify-center">
+                                            <Clock className="h-6 w-6 text-muted-foreground" />
+                                        </div>
+                                    )}
+
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-medium truncate flex items-center gap-2">
+                                            {file.fileName ||
+                                                formatFileName(file.filePath)}
+                                            {isLoading && (
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                            )}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground truncate">
+                                            {file.filePath}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {formatDistanceToNow(
+                                                new Date(file.openedAt),
+                                                {
+                                                    addSuffix: true,
+                                                },
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="text-xs text-muted-foreground truncate">
-                                        {file.filePath}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground">
-                                        {formatDistanceToNow(
-                                            new Date(file.openedAt),
-                                            {
-                                                addSuffix: true,
-                                            },
-                                        )}
-                                    </div>
-                                </div>
-                            </DropdownMenuItem>
-                        ))}
+                                </DropdownMenuItem>
+                            )
+                        })}
                     </div>
                 )}
             </DropdownMenuContent>

@@ -1,8 +1,8 @@
 import { ipcRenderer } from "electron"
 import type {
+    AutoSaveEntry,
     DiagramHistoryEntry,
     RecentFile,
-    AutoSaveEntry,
     ThumbnailCache,
 } from "../main/persistence-types"
 
@@ -98,6 +98,22 @@ export const persistenceAPI = {
      */
     deleteApiKey: (provider: string) =>
         ipcRenderer.invoke("persistence:delete-api-key", provider),
+
+    // ==================== File System Operations ====================
+
+    /**
+     * Read file from file system
+     * Used for opening recent files
+     */
+    readFile: (filePath: string) =>
+        ipcRenderer.invoke("persistence:read-file", filePath),
+
+    /**
+     * Check if file exists
+     * Used for validating recent files
+     */
+    fileExists: (filePath: string) =>
+        ipcRenderer.invoke("persistence:file-exists", filePath),
 
     // ==================== Maintenance ====================
 

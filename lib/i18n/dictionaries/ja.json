@@ -141,7 +141,27 @@
         "description": "AI 修正前に保存された各ダイアグラム。\nダイアグラムをクリックして復元",
         "noHistory": "まだ履歴がありません。メッセージを送信してダイアグラム履歴を作成してください。",
         "version": "バージョン",
-        "restoreTo": "バージョン {version} に復元しますか？"
+        "restoreTo": "バージョン {version} に復元しますか？",
+        "searchPlaceholder": "バージョンまたは日付で検索...",
+        "noResults": "一致するバージョンが見つかりません"
+    },
+    "recentFiles": {
+        "title": "最近のファイル",
+        "empty": "最近のファイルはありません",
+        "openFile": "ファイルを開く",
+        "openTooltip": "このファイルを開く"
+    },
+    "autoSave": {
+        "recoverTitle": "未保存の作業を回復",
+        "foundDescription": "ダイアグラムの自動保存バージョンが見つかりました",
+        "noSaveDescription": "自動保存バージョンが見つかりません",
+        "noVersionsMessage": "回復可能な自動保存バージョンがありません",
+        "discard": "すべて破棄",
+        "keepWorking": "作業を継続",
+        "restore": "選択を復元",
+        "startNew": "新規開始",
+        "lastSaved": "最終保存 {time}",
+        "unsavedChanges": "未保存の変更があります"
     },
     "dialogs": {
         "clearTitle": "すべてクリアしますか？",

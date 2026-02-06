@@ -1,4 +1,6 @@
 import { ipcMain } from "electron"
+import { promises as fs } from "fs"
+import path from "path"
 import {
     AutoSaveEntrySchema,
     DiagramHistoryEntrySchema,
@@ -213,6 +215,63 @@ export function registerPersistenceHandlers(): void {
         const result = deleteApiKey(provider.trim())
         return handleStorageResult(result)
     })
+
+    // ==================== File System Operations ====================
+
+    /**
+     * Read a file from the file system
+     * Used for opening recent files in desktop mode
+     */
+    ipcMain.handle(
+        "persistence:read-file",
+        async (_event, filePath: string) => {
+            if (typeof filePath !== "string" || !filePath.trim()) {
+                throw new Error("Invalid file path")
+            }
+
+            // Security: Resolve path to prevent directory traversal
+            const resolvedPath = path.resolve(filePath.trim())
+
+            try {
+                // Check if file exists
+                await fs.access(resolvedPath)
+
+                // Read file content
+                const content = await fs.readFile(resolvedPath, "utf-8")
+
+                return {
+                    success: true,
+                    data: content,
+                    path: resolvedPath,
+                }
+            } catch (error) {
+                throw new Error(
+                    `Failed to read file: ${error instanceof Error ? error.message : String(error)}`,
+                )
+            }
+        },
+    )
+
+    /**
+     * Check if a file exists
+     * Used for validating recent files before displaying them
+     */
+    ipcMain.handle(
+        "persistence:file-exists",
+        async (_event, filePath: string) => {
+            if (typeof filePath !== "string" || !filePath.trim()) {
+                return false
+            }
+
+            try {
+                const resolvedPath = path.resolve(filePath.trim())
+                await fs.access(resolvedPath)
+                return true
+            } catch {
+                return false
+            }
+        },
+    )
 
     // ==================== Maintenance ====================
 

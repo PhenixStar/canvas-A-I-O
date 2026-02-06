@@ -82,8 +82,13 @@ type ThumbnailCache = {
 /** Persistence API interface */
 interface PersistenceAPI {
     // Diagram History
-    addDiagramHistory: (entry: Omit<DiagramHistoryEntry, "id">) => Promise<DiagramHistoryEntry>
-    getDiagramHistory: (diagramId: string, limit?: number) => Promise<DiagramHistoryEntry[]>
+    addDiagramHistory: (
+        entry: Omit<DiagramHistoryEntry, "id">,
+    ) => Promise<DiagramHistoryEntry>
+    getDiagramHistory: (
+        diagramId: string,
+        limit?: number,
+    ) => Promise<DiagramHistoryEntry[]>
 
     // Recent Files
     addRecentFile: (file: Omit<RecentFile, "id">) => Promise<void>
@@ -103,6 +108,14 @@ interface PersistenceAPI {
     storeApiKey: (provider: string, apiKey: string) => Promise<void>
     getApiKey: (provider: string) => Promise<string | null>
     deleteApiKey: (provider: string) => Promise<void>
+
+    // File System Operations
+    readFile: (filePath: string) => Promise<{
+        success: boolean
+        data: string
+        path: string
+    }>
+    fileExists: (filePath: string) => Promise<boolean>
 
     // Maintenance
     cleanupOldData: (daysToKeep?: number) => Promise<void>

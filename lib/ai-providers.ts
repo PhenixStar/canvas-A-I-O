@@ -965,7 +965,7 @@ export function getAIModel(overrides?: ClientOverrides): ModelConfig {
                 apiKey,
                 ...(baseURL && { baseURL }),
                 // Add a custom fetch wrapper to intercept and fix the stream from sglang
-                fetch: async (url, options) => {
+                fetch: (async (url, options) => {
                     const response = await fetch(url, options)
                     if (!response.body) {
                         return response
@@ -1057,7 +1057,7 @@ export function getAIModel(overrides?: ClientOverrides): ModelConfig {
                         statusText: response.statusText,
                         headers: response.headers,
                     })
-                },
+                }) as typeof fetch,
             })
             model = sglangProvider.chat(modelId)
             break

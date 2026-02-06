@@ -3,6 +3,7 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import {
+    History,
     MessageSquarePlus,
     PanelRightClose,
     PanelRightOpen,
@@ -23,6 +24,12 @@ import { ButtonWithTooltip } from "@/components/button-with-tooltip"
 import { ChatInput } from "@/components/chat-input"
 import Image from "@/components/image-with-basepath"
 import { ModelConfigDialog } from "@/components/model-config-dialog"
+import {
+    AutoSaveRestoreDialog,
+    DiagramHistoryDialog,
+    RecentFilesMenu,
+    useAutoSaveRecovery,
+} from "@/components/persistence-ui"
 import { SettingsDialog } from "@/components/settings-dialog"
 import { useDiagram } from "@/contexts/diagram-context"
 import { useDiagramToolHandlers } from "@/hooks/use-diagram-tool-handlers"
@@ -167,6 +174,10 @@ export default function ChatPanel({
 
     const [showSettingsDialog, setShowSettingsDialog] = useState(false)
     const [showModelConfigDialog, setShowModelConfigDialog] = useState(false)
+
+    // Persistence UI dialogs
+    const [showDiagramHistory, setShowDiagramHistory] = useState(false)
+    const { showRecoveryDialog, setShowRecoveryDialog } = useAutoSaveRecovery()
 
     // Model configuration hook
     const modelConfig = useModelConfig()
@@ -1327,6 +1338,50 @@ export default function ChatPanel({
                                 className={`${isMobile ? "h-4 w-4" : "h-5 w-5"} text-muted-foreground`}
                             />
                         </ButtonWithTooltip>
+
+                        {/* Diagram History Button */}
+                        <ButtonWithTooltip
+                            tooltipContent="Diagram History"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setShowDiagramHistory(true)}
+                            className="hover:bg-accent"
+                        >
+                            <History
+                                className={`${isMobile ? "h-4 w-4" : "h-5 w-5"} text-muted-foreground`}
+                            />
+                        </ButtonWithTooltip>
+
+                        {/* Recent Files Menu */}
+                        <RecentFilesMenu>
+                            <ButtonWithTooltip
+                                tooltipContent="Recent Files"
+                                variant="ghost"
+                                size="icon"
+                                className="hover:bg-accent"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="24"
+                                    height="24"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    role="img"
+                                    aria-label="Recent Files"
+                                    className={`${isMobile ? "h-4 w-4" : "h-5 w-5"} text-muted-foreground`}
+                                >
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+                                    <path d="M12 6h5" />
+                                    <path d="M12 10h5" />
+                                    <path d="M12 14h5" />
+                                </svg>
+                            </ButtonWithTooltip>
+                        </RecentFilesMenu>
                         <div className="hidden sm:flex items-center gap-2">
                             {!isMobile && (
                                 <ButtonWithTooltip
@@ -1422,6 +1477,17 @@ export default function ChatPanel({
                 open={showModelConfigDialog}
                 onOpenChange={setShowModelConfigDialog}
                 modelConfig={modelConfig}
+            />
+
+            {/* Persistence UI Dialogs */}
+            <DiagramHistoryDialog
+                open={showDiagramHistory}
+                onOpenChange={setShowDiagramHistory}
+            />
+
+            <AutoSaveRestoreDialog
+                open={showRecoveryDialog}
+                onOpenChange={setShowRecoveryDialog}
             />
         </div>
     )

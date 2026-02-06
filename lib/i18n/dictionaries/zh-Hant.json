@@ -141,7 +141,27 @@
         "description": "在 AI 修改之前儲存的每個圖表。\n點擊圖表以還原它",
         "noHistory": "尚無歷史紀錄。傳送訊息以建立圖表歷史。",
         "version": "版本",
-        "restoreTo": "還原到版本 {version}？"
+        "restoreTo": "還原到版本 {version}？",
+        "searchPlaceholder": "按版本或日期搜尋...",
+        "noResults": "未找到符合的版本"
+    },
+    "recentFiles": {
+        "title": "最近的檔案",
+        "empty": "沒有最近的檔案",
+        "openFile": "開啟檔案",
+        "openTooltip": "開啟此檔案"
+    },
+    "autoSave": {
+        "recoverTitle": "復原未儲存的工作",
+        "foundDescription": "我們找到了圖表的自動儲存版本",
+        "noSaveDescription": "未找到自動儲存版本",
+        "noVersionsMessage": "沒有可復原的自動儲存版本",
+        "discard": "全部捨棄",
+        "keepWorking": "繼續工作",
+        "restore": "復原選定",
+        "startNew": "開始新工作",
+        "lastSaved": "上次儲存 {time}",
+        "unsavedChanges": "您有未儲存的變更"
     },
     "dialogs": {
         "clearTitle": "清除所有內容？",
