@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron"
+import { persistenceAPI } from "./persistence-api"
 
 /**
  * Expose safe APIs to the renderer process
@@ -31,4 +32,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     getUserLocale: () => ipcRenderer.invoke("get-user-locale"),
     setUserLocale: (locale: string) =>
         ipcRenderer.invoke("set-user-locale", locale),
+
+    // Persistence API
+    persistence: persistenceAPI,
 })

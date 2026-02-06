@@ -11,6 +11,10 @@ import {
     isRealDiagram,
     validateAndFixXml,
 } from "../lib/utils"
+import { useAPIKeys } from "@/hooks/use-api-keys"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import { useDiagramHistory } from "@/hooks/use-diagram-history"
+import { useRecentFiles } from "@/hooks/use-recent-files"
 
 interface DiagramContextType {
     chartXML: string
@@ -37,6 +41,28 @@ interface DiagramContextType {
     resetDrawioReady: () => void
     showSaveDialog: boolean
     setShowSaveDialog: (show: boolean) => void
+    // Persistence properties
+    currentDiagramId: string | null
+    setCurrentDiagramId: (id: string | null) => void
+    autoSaveState: {
+        lastSaved: number | null
+        isDirty: boolean
+        saving: boolean
+    }
+    historyState: {
+        history: any[]
+        loading: boolean
+    }
+    apiKeysState: {
+        keys: Map<string, any>
+        loading: boolean
+    }
+    recentFilesState: {
+        files: any[]
+        loading: boolean
+    }
+    saveNow: () => Promise<void>
+    addRecentFile: (file: { filePath: string; fileName: string; thumbnail?: string }) => Promise<void>
 }
 
 const DiagramContext = createContext<DiagramContextType | undefined>(undefined)
@@ -49,6 +75,30 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
     >([])
     const [isDrawioReady, setIsDrawioReady] = useState(false)
     const [showSaveDialog, setShowSaveDialog] = useState(false)
+
+    // Persistence state
+    const [currentDiagramId, setCurrentDiagramId] = useState<string | null>(null)
+
+    // Initialize persistence hooks
+    // Auto-save: only enable when we have a diagram ID and real diagram content
+    const autoSave = useAutoSave(
+        currentDiagramId || "",
+        chartXML,
+        currentDiagramId !== null && isRealDiagram(chartXML),
+        30000, // 30 second debounce
+    )
+
+    // Diagram history: track versions for undo/redo
+    const diagramHistoryPersistence = useDiagramHistory(
+        currentDiagramId || "",
+    )
+
+    // Recent files: track file operations
+    const recentFiles = useRecentFiles(20)
+
+    // API keys: load and make available to chat context
+    const apiKeys = useAPIKeys()
+
     const hasCalledOnLoadRef = useRef(false)
     const drawioRef = useRef<DrawIoEmbedRef | null>(null)
     const resolverRef = useRef<((value: string) => void) | null>(null)
@@ -60,6 +110,8 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
     const hasDiagramRestoredRef = useRef<boolean>(false)
     // Track latest chartXML for restoration after remount
     const chartXMLRef = useRef<string>("")
+    // Track history version number
+    const currentVersionRef = useRef<number>(0)
 
     const onDrawioLoad = () => {
         // Only set ready state once to prevent infinite loops
@@ -258,6 +310,20 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
                 // Keep only the last MAX_HISTORY_SIZE entries (circular buffer)
                 return newHistory.slice(-MAX_HISTORY_SIZE)
             })
+
+            // Save to persistent history storage
+            if (currentDiagramId && extractedXML) {
+                currentVersionRef.current += 1
+                diagramHistoryPersistence.addEntry({
+                    diagramId: currentDiagramId,
+                    version: currentVersionRef.current,
+                    data: extractedXML,
+                    description: `Version ${currentVersionRef.current}`,
+                }).catch(err => {
+                    console.warn("Failed to save to history:", err)
+                })
+            }
+
             expectHistoryExportRef.current = false
         }
 
@@ -378,6 +444,29 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
+    // Helper to add file to recent files
+    const addRecentFile = async (
+        file: { filePath: string; fileName: string; thumbnail?: string },
+    ) => {
+        try {
+            await recentFiles.addFile(file)
+        } catch (err) {
+            console.warn("Failed to add to recent files:", err)
+        }
+    }
+
+    // Save diagram to persistence (manual trigger)
+    const saveNow = async () => {
+        if (autoSave.isDirty) {
+            await autoSave.saveNow()
+        }
+    }
+
+    // Check if running in Electron
+    const isElectron =
+        typeof window !== "undefined" &&
+        (window as any).electronAPI?.isElectron
+
     return (
         <DiagramContext.Provider
             value={{
@@ -400,6 +489,28 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
                 resetDrawioReady,
                 showSaveDialog,
                 setShowSaveDialog,
+                // Persistence properties
+                currentDiagramId,
+                setCurrentDiagramId,
+                autoSaveState: {
+                    lastSaved: autoSave.lastSaved,
+                    isDirty: autoSave.isDirty,
+                    saving: autoSave.saving,
+                },
+                historyState: {
+                    history: diagramHistoryPersistence.history,
+                    loading: diagramHistoryPersistence.loading,
+                },
+                apiKeysState: {
+                    keys: apiKeys.keys,
+                    loading: apiKeys.loading,
+                },
+                recentFilesState: {
+                    files: recentFiles.files,
+                    loading: recentFiles.loading,
+                },
+                saveNow,
+                addRecentFile,
             }}
         >
             {children}
@@ -413,4 +524,37 @@ export function useDiagram() {
         throw new Error("useDiagram must be used within a DiagramProvider")
     }
     return context
+}
+
+/**
+ * Hook to access API keys from diagram context
+ * Provides convenient access to stored API keys for authentication
+ */
+export function useAPIKeysFromContext() {
+    const { apiKeysState } = useDiagram()
+    return apiKeysState
+}
+
+/**
+ * Hook to access auto-save state from diagram context
+ * Provides convenient access to auto-save status and controls
+ */
+export function useAutoSaveState() {
+    const { autoSaveState, saveNow } = useDiagram()
+    return {
+        ...autoSaveState,
+        saveNow,
+    }
+}
+
+/**
+ * Hook to access recent files from diagram context
+ * Provides convenient access to recent files list
+ */
+export function useRecentFilesFromContext() {
+    const { recentFilesState, addRecentFile } = useDiagram()
+    return {
+        ...recentFilesState,
+        addRecentFile,
+    }
 }

@@ -44,6 +44,70 @@ interface SetUserLocaleResult {
     error?: string
 }
 
+/** Persistence types imported from main process */
+type DiagramHistoryEntry = {
+    id: string
+    diagramId: string
+    version: number
+    data: string
+    timestamp: number
+    description?: string
+}
+
+type RecentFile = {
+    id: string
+    filePath: string
+    fileName: string
+    lastAccessed: number
+    thumbnail?: string
+}
+
+type AutoSaveEntry = {
+    id: string
+    diagramId: string
+    data: string
+    timestamp: number
+    version: number
+}
+
+type ThumbnailCache = {
+    id: string
+    diagramId: string
+    thumbnailData: string
+    timestamp: number
+    width: number
+    height: number
+}
+
+/** Persistence API interface */
+interface PersistenceAPI {
+    // Diagram History
+    addDiagramHistory: (entry: Omit<DiagramHistoryEntry, "id">) => Promise<DiagramHistoryEntry>
+    getDiagramHistory: (diagramId: string, limit?: number) => Promise<DiagramHistoryEntry[]>
+
+    // Recent Files
+    addRecentFile: (file: Omit<RecentFile, "id">) => Promise<void>
+    getRecentFiles: (limit?: number) => Promise<RecentFile[]>
+    clearRecentFiles: () => Promise<void>
+
+    // Auto-save
+    saveAutoSave: (entry: Omit<AutoSaveEntry, "id">) => Promise<AutoSaveEntry>
+    getAutoSave: (diagramId: string) => Promise<AutoSaveEntry | null>
+    deleteAutoSave: (diagramId: string) => Promise<void>
+
+    // Thumbnails
+    cacheThumbnail: (thumbnail: Omit<ThumbnailCache, "id">) => Promise<void>
+    getThumbnail: (diagramId: string) => Promise<ThumbnailCache | null>
+
+    // API Keys
+    storeApiKey: (provider: string, apiKey: string) => Promise<void>
+    getApiKey: (provider: string) => Promise<string | null>
+    deleteApiKey: (provider: string) => Promise<void>
+
+    // Maintenance
+    cleanupOldData: (daysToKeep?: number) => Promise<void>
+}
+
 declare global {
     interface Window {
         /** Main window Electron API */
@@ -74,6 +138,8 @@ declare global {
             >
             /** Set user's preferred locale */
             setUserLocale: (locale: string) => Promise<SetUserLocaleResult>
+            /** Persistence API for desktop storage */
+            persistence: PersistenceAPI
         }
 
         /** Settings window Electron API */
