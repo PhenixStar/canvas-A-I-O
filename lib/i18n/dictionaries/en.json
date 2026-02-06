@@ -141,7 +141,27 @@
         "description": "Here saved each diagram before AI modification.\nClick on a diagram to restore it",
         "noHistory": "No history available yet. Send messages to create diagram history.",
         "version": "Version",
-        "restoreTo": "Restore to Version {version}?"
+        "restoreTo": "Restore to Version {version}?",
+        "searchPlaceholder": "Search by version or date...",
+        "noResults": "No matching versions found"
+    },
+    "recentFiles": {
+        "title": "Recent Files",
+        "empty": "No recent files",
+        "openFile": "Open File",
+        "openTooltip": "Open this file"
+    },
+    "autoSave": {
+        "recoverTitle": "Recover Unsaved Work",
+        "foundDescription": "We found auto-saved versions of your diagram",
+        "noSaveDescription": "No auto-saved versions found",
+        "noVersionsMessage": "No auto-saved versions available to recover",
+        "discard": "Discard All",
+        "keepWorking": "Keep Working",
+        "restore": "Restore Selected",
+        "startNew": "Start New",
+        "lastSaved": "Last saved {time}",
+        "unsavedChanges": "You have unsaved changes"
     },
     "dialogs": {
         "clearTitle": "Clear Everything?",
