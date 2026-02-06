@@ -4,7 +4,6 @@ interface ModelConfig {
   provider: string;
   capabilities: ModelCapabilities;
   parameters: ModelParameters;
-}
 
 const MODEL_CONFIGS: Record<string, ModelConfig> = {
   'gpt-4': {
@@ -422,5 +421,503 @@ class EdgeService {
 ```
 
 ---
+
+---
+
+## Desktop Application Deployment Architecture
+
+### Production Build Process
+
+#### Build Configuration
+```typescript
+// electron-builder.config.json
+{
+  "appId": "com.canvas-ai-o.app",
+  "productName": "AIO Canvas",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    "**/*",
+    "!**/node_modules/*/{test,__tests__,tests,pkg,test.js,spec.js,*.test.*}",
+    "!**/node_modules/.bin",
+    "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}"
+  ],
+  "mac": {
+    "category": "public.app-category.productivity",
+    "target": ["dmg"],
+    "hardenedRuntime": true,
+    "entitlements": "entitlements.mac.plist",
+    "entitlementsInherit": "entitlements.mac.plist"
+  },
+  "win": {
+    "target": ["nsis"],
+    "signingHashAlgorithms": ["sha256"],
+    "certificateFile": "certificate.p12",
+    "certificatePassword": "${WIN_CREDENTIAL_PASSWORD}"
+  },
+  "linux": {
+    "target": ["AppImage"],
+    "category": "Development"
+  }
+}
+```
+
+#### Electron Main Process Architecture
+```typescript
+// electron/main.ts
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import path from 'path';
+import { DatabaseManager } from './services/database';
+import { SecureStorage } from './services/secure-storage';
+
+class ElectronApp {
+  private mainWindow: BrowserWindow | null = null;
+  private db: DatabaseManager;
+  private secureStorage: SecureStorage;
+
+  constructor() {
+    this.db = new DatabaseManager();
+    this.secureStorage = new SecureStorage();
+    this.setupApp();
+    this.setupIPC();
+  }
+
+  private setupApp(): void {
+    // Handle app lifecycle
+    app.whenReady().then(() => this.createWindow());
+
+    app.on('window-all-closed', () => {
+      if (process.platform !== 'darwin') {
+        app.quit();
+      }
+    });
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        this.createWindow();
+      }
+    });
+  }
+
+  private async createWindow(): Promise<void> {
+    const mainWindow = new BrowserWindow({
+      width: 1200,
+      height: 800,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        preload: path.join(__dirname, 'preload.js'),
+        webSecurity: process.env.NODE_ENV === 'production'
+      },
+      titleBarStyle: 'hiddenInset'
+    });
+
+    // Load React app
+    await mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
+
+    // Development tools
+    if (process.env.NODE_ENV === 'development') {
+      mainWindow.webContents.openDevTools();
+    }
+
+    this.mainWindow = mainWindow;
+  }
+
+  private setupIPC(): void {
+    // File operations
+    ipcMain.handle('dialog:openFile', async () => {
+      const result = await dialog.showOpenDialog({
+        properties: ['openFile'],
+        filters: [
+          { name: 'Diagram Files', extensions: ['xml', 'drawio', 'vsdx'] },
+          { name: 'All Files', extensions: ['*'] }
+        ]
+      });
+      return result.filePaths[0];
+    });
+
+    // Database operations
+    ipcMain.handle('database:saveDiagram', async (event, data) => {
+      return await this.db.saveDiagram(data);
+    });
+
+    ipcMain.handle('database:loadDiagram', async (event, id) => {
+      return await this.db.loadDiagram(id);
+    });
+
+    // Secure storage
+    ipcMain.handle('secure:saveApiKey', async (event, provider, key) => {
+      const encryptedKey = this.secureStorage.encryptApiKey(key);
+      return await this.db.saveConfig(`api_key_${provider}`, encryptedKey, true);
+    });
+
+    ipcMain.handle('secure:getApiKey', async (event, provider) => {
+      const encryptedKey = await this.db.getConfig(`api_key_${provider}`);
+      if (!encryptedKey) return null;
+      return this.secureStorage.decryptApiKey(encryptedKey);
+    });
+  }
+}
+```
+
+### Auto-Update Mechanism
+
+#### Update Server Configuration
+```typescript
+// app/api/updates/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+
+interface UpdateInfo {
+  version: string;
+  url: string;
+  notes: string;
+  pub_date: string;
+}
+
+export async function GET(request: NextRequest) {
+  const updates: UpdateInfo[] = [
+    {
+      version: app.getVersion(),
+      url: 'https://github.com/PhenixStar/canvas-A-I-O/releases',
+      notes: 'Bug fixes and improvements\n- Enhanced auto-save functionality\n- Improved history management\n- Better error handling',
+      pub_date: new Date().toISOString()
+    }
+  ];
+
+  return NextResponse.json(updates);
+}
+```
+
+#### Auto-Updater Integration
+```typescript
+// electron/services/updater.ts
+import { autoUpdater } from 'electron-updater';
+import { BrowserWindow } from 'electron';
+
+export class UpdateService {
+  constructor(private mainWindow: BrowserWindow) {
+    this.setupUpdater();
+  }
+
+  private setupUpdater(): void {
+    autoUpdater.setFeedURL({
+      provider: 'generic',
+      url: 'https://draw.nulled.ai/updates',
+      channel: 'latest'
+    });
+
+    autoUpdater.on('checking-for-update', () => {
+      this.mainWindow.webContents.send('update-status', { status: 'checking' });
+    });
+
+    autoUpdater.on('update-available', (info) => {
+      this.mainWindow.webContents.send('update-status', {
+        status: 'available',
+        version: info.version
+      });
+    });
+
+    autoUpdater.on('update-not-available', () => {
+      this.mainWindow.webContents.send('update-status', { status: 'not-available' });
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+      this.mainWindow.webContents.send('update-progress', progress);
+    });
+
+    autoUpdater.on('update-downloaded', () => {
+      this.mainWindow.webContents.send('update-status', { status: 'downloaded' });
+    });
+
+    autoUpdater.on('error', (error) => {
+      this.mainWindow.webContents.send('update-error', error);
+    });
+  }
+
+  checkForUpdates(): void {
+    autoUpdater.checkForUpdates();
+  }
+
+  installUpdate(): void {
+    autoUpdater.quitAndInstall();
+  }
+}
+```
+
+### Offline Mode Architecture
+
+#### Offline Resource Management
+```typescript
+// electron/services/offline-manager.ts
+import { app, ipcMain } from 'electron';
+import path from 'path';
+import fs from 'fs/promises';
+
+export class OfflineManager {
+  private offlineDir: string;
+
+  constructor() {
+    this.offlineDir = path.join(app.getPath('userData'), 'offline');
+    this.setupOfflineResources();
+  }
+
+  private async setupOfflineResources(): Promise<void> {
+    // Create offline directory
+    await fs.mkdir(this.offlineDir, { recursive: true });
+
+    // Copy essential draw.io files
+    const drawioDir = path.join(__dirname, 'node_modules', 'drawio', 'src', 'main');
+    await this.copyDir(drawioDir, path.join(this.offlineDir, 'drawio'));
+  }
+
+  private async copyDir(src: string, dest: string): Promise<void> {
+    await fs.mkdir(dest, { recursive: true });
+    const entries = await fs.readdir(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+
+      if (entry.isDirectory()) {
+        await this.copyDir(srcPath, destPath);
+      } else {
+        await fs.copyFile(srcPath, destPath);
+      }
+    }
+  }
+
+  async getDrawioResource(resource: string): Promise<string> {
+    const resourcePath = path.join(this.offlineDir, 'drawio', resource);
+    return await fs.readFile(resourcePath, 'utf-8');
+  }
+}
+```
+
+#### Cache Management
+```typescript
+// electron/services/cache-manager.ts
+import { app, ipcMain } from 'electron';
+import path from 'path';
+import fs from 'fs/promises';
+
+interface CacheItem {
+  key: string;
+  data: string;
+  timestamp: number;
+  ttl: number;
+}
+
+export class CacheManager {
+  private cacheDir: string;
+  private memoryCache: Map<string, CacheItem> = new Map();
+
+  constructor() {
+    this.cacheDir = path.join(app.getPath('userData'), 'cache');
+    this.setupCache();
+  }
+
+  private async setupCache(): Promise<void> {
+    await fs.mkdir(this.cacheDir, { recursive: true });
+  }
+
+  async set(key: string, data: string, ttl: number = 3600000): Promise<void> {
+    const cacheItem: CacheItem = {
+      key,
+      data,
+      timestamp: Date.now(),
+      ttl
+    };
+
+    // Store in memory cache
+    this.memoryCache.set(key, cacheItem);
+
+    // Store in file cache
+    const cacheFile = path.join(this.cacheDir, `${key}.cache`);
+    await fs.writeFile(cacheFile, JSON.stringify(cacheItem));
+  }
+
+  async get(key: string): Promise<string | null> {
+    // Check memory cache first
+    const memoryItem = this.memoryCache.get(key);
+    if (memoryItem && !this.isExpired(memoryItem)) {
+      return memoryItem.data;
+    }
+
+    // Check file cache
+    const cacheFile = path.join(this.cacheDir, `${key}.cache`);
+    try {
+      const data = await fs.readFile(cacheFile, 'utf-8');
+      const cacheItem: CacheItem = JSON.parse(data);
+
+      if (this.isExpired(cacheItem)) {
+        await this.delete(key);
+        return null;
+      }
+
+      // Update memory cache
+      this.memoryCache.set(key, cacheItem);
+      return cacheItem.data;
+    } catch {
+      return null;
+    }
+  }
+
+  private isExpired(item: CacheItem): boolean {
+    return Date.now() - item.timestamp > item.ttl;
+  }
+
+  async delete(key: string): Promise<void> {
+    this.memoryCache.delete(key);
+    const cacheFile = path.join(this.cacheDir, `${key}.cache`);
+    try {
+      await fs.unlink(cacheFile);
+    } catch {
+      // File doesn't exist, ignore
+    }
+  }
+
+  async clear(): Promise<void> {
+    this.memoryCache.clear();
+    const files = await fs.readdir(this.cacheDir);
+    await Promise.all(files.map(file => fs.unlink(path.join(this.cacheDir, file))));
+  }
+}
+```
+
+### Packaging and Distribution
+
+#### Package.json Configuration
+```json
+{
+  "name": "canvas-A-I-O-desktop",
+  "version": "1.0.0",
+  "description": "AI-Powered Diagram Creation Tool",
+  "main": "dist/main.js",
+  "homepage": "https://draw.nulled.ai",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PhenixStar/canvas-A-I-O.git"
+  },
+  "build": {
+    "appId": "com.canvas-ai-o.app",
+    "productName": "AIO Canvas",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "dist/**/*",
+      "!dist/**/*.map",
+      "!dist/**/*.test.*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "certificateFile": "certificate.p12",
+      "certificatePassword": "${WIN_CREDENTIAL_PASSWORD}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ]
+    }
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "PhenixStar",
+    "repo": "canvas-A-I-O"
+  }
+}
+```
+
+#### Entitlements Configuration
+```xml
+<!-- entitlements.mac.plist -->
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.allow-jit</key>
+    <true/>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
+    <true/>
+    <key>com.apple.security.files.downloads.read-write</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+</dict>
+</plist>
+```
+
+### Deployment Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph "Production Build Process"
+        SRC[Source Code]
+        BUILDER[Electron Builder]
+        PACKAGER[Packaging System]
+    end
+
+    subgraph "Distributions"
+        MAC[macOS App]
+        WIN[Windows Installer]
+        LINUX[Linux AppImage]
+    end
+
+    subgraph "Distribution Channels"
+        GH[GitHub Releases]
+        STORE[App Stores]
+        CDN[CDN Mirror]
+    end
+
+    subgraph "Update System"
+        UPDATES[Update Server]
+        CHECK[Update Check]
+        DL[Download Update]
+        INSTALL[Auto-Install]
+    end
+
+    SRC --> BUILDER
+    BUILDER --> PACKAGER
+    PACKAGER --> MAC
+    PACKAGER --> WIN
+    PACKAGER --> LINUX
+
+    MAC --> GH
+    WIN --> STORE
+    LINUX --> GH
+
+    GH --> UPDATES
+    UPDATES --> CHECK
+    CHECK --> DL
+    DL --> INSTALL
+
+    CDN --> GH
+    CDN --> STORE
+```
 
 This architecture documentation provides a comprehensive view of how AIO Canvas is structured and how it integrates with draw.io while adding AI capabilities. The architecture supports both web and desktop deployment with a focus on performance, security, and scalability.

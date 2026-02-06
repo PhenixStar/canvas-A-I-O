@@ -423,3 +423,329 @@ async function* processStreamingResponse(
 
 ### Model Configuration
 ```typescript
+
+---
+
+## Desktop Persistence Architecture (Phase 2)
+
+### Multi-Layered Storage Strategy
+
+AIO Canvas implements a sophisticated multi-layered storage architecture for desktop persistence:
+
+```mermaid
+graph TB
+    subgraph "Desktop Application"
+        UI[React UI Layer]
+        API[API Gateway]
+        CACHE[In-Memory Cache]
+    end
+
+    subgraph "Persistence Layer"
+        SQL[SQLite Database]
+        CONFIG[JSON Configuration]
+        SECURE[Secure Storage]
+    end
+
+    subgraph "Storage Types"
+        LOCAL[Local Storage]
+        SESSION[Session Data]
+        HISTORY[History Records]
+        SETTINGS[User Settings]
+        KEYS[API Keys]
+    end
+
+    UI --> API
+    API --> CACHE
+    API --> SQL
+    API --> CONFIG
+    API --> SECURE
+
+    SQL --> LOCAL
+    CONFIG --> LOCAL
+    SECURE --> LOCAL
+
+    SQL --> HISTORY
+    CONFIG --> SETTINGS
+    SECURE --> KEYS
+```
+
+### Database Schema
+
+#### SQLite Database Structure
+```sql
+-- Main database file: ~/.canvas-A-I-O/data.sqlite
+
+-- Diagrams Table
+CREATE TABLE IF NOT EXISTS diagrams (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    uuid TEXT UNIQUE NOT NULL,
+    title TEXT DEFAULT 'Untitled',
+    content TEXT NOT NULL,  -- Draw.io XML
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP,
+    file_size INTEGER DEFAULT 0,
+    version INTEGER DEFAULT 1
+);
+
+-- History Table
+CREATE TABLE IF NOT EXISTS history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    diagram_id INTEGER,
+    version INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    comment TEXT DEFAULT '',
+    FOREIGN KEY (diagram_id) REFERENCES diagrams (id)
+);
+
+-- Auto-Save Records
+CREATE TABLE IF NOT EXISTS autosave (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    diagram_id INTEGER UNIQUE,
+    content TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (diagram_id) REFERENCES diagrams (id)
+);
+
+-- Configuration Table
+CREATE TABLE IF NOT EXISTS config (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    encrypted BOOLEAN DEFAULT 0,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Recent Files Cache
+CREATE TABLE IF NOT EXISTS recent_files (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    diagram_id INTEGER,
+    accessed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (diagram_id) REFERENCES diagrams (id)
+);
+
+-- Indexes for Performance
+CREATE INDEX IF NOT EXISTS idx_diagrams_created ON diagrams(created_at);
+CREATE INDEX IF NOT EXISTS idx_diagrams_updated ON diagrams(updated_at);
+CREATE INDEX IF NOT EXISTS idx_history_created ON history(created_at);
+CREATE INDEX IF NOT EXISTS idx_recent_accessed ON recent_files(accessed_at);
+```
+
+### Security Architecture
+
+#### API Key Encryption
+```typescript
+import { safeStorage } from 'electron';
+
+class SecureStorage {
+  private isAvailable: boolean;
+
+  constructor() {
+    this.isAvailable = process.platform !== 'darwin' || safeStorage.isAvailable();
+  }
+
+  // Encrypt API keys using Electron's safeStorage
+  encryptApiKey(apiKey: string): string {
+    if (!this.isAvailable) {
+      return Buffer.from(apiKey).toString('base64');
+    }
+    return safeStorage.encryptString(apiKey);
+  }
+
+  // Decrypt API keys
+  decryptApiKey(encryptedKey: string): string {
+    if (!this.isAvailable) {
+      return Buffer.from(encryptedKey, 'base64').toString();
+    }
+    return safeStorage.decryptString(encryptedKey);
+  }
+
+  // Check if encryption is available
+  isEncryptionAvailable(): boolean {
+    return this.isAvailable;
+  }
+}
+```
+
+### Persistence Operations
+
+#### Auto-Save Implementation
+```typescript
+class AutoSaveManager {
+  private interval: NodeJS.Timeout | null = null;
+  private autoSaveInterval = 30000; // 30 seconds
+
+  constructor(private db: any, private currentDiagram: Diagram | null) {
+    this.setupAutoSave();
+  }
+
+  setupAutoSave(): void {
+    if (this.interval) {
+      clearInterval(this.interval);
+    }
+
+    this.interval = setInterval(async () => {
+      if (this.currentDiagram && this.currentDiagram.content) {
+        await this.saveAutoSave();
+      }
+    }, this.autoSaveInterval);
+  }
+
+  async saveAutoSave(): Promise<void> {
+    if (!this.currentDiagram) return;
+
+    const autoSave = {
+      diagram_id: this.currentDiagram.id,
+      content: this.currentDiagram.content,
+      created_at: new Date().toISOString()
+    };
+
+    await this.db.run(
+      'INSERT OR REPLACE INTO autosave (diagram_id, content, created_at) VALUES (?, ?, ?)',
+      [autoSave.diagram_id, autoSave.content, autoSave.created_at]
+    );
+  }
+
+  async getAutoSave(diagramId: number): Promise<string | null> {
+    const result = await this.db.get(
+      'SELECT content FROM autosave WHERE diagram_id = ?',
+      [diagramId]
+    );
+    return result?.content || null;
+  }
+}
+```
+
+#### History Management
+```typescript
+class HistoryManager {
+  async saveVersion(diagramId: number, content: string, comment: string = ''): Promise<void> {
+    const versionResult = await this.db.get(
+      'SELECT MAX(version) as max_version FROM history WHERE diagram_id = ?',
+      [diagramId]
+    );
+
+    const newVersion = (versionResult?.max_version || 0) + 1;
+
+    await this.db.run(
+      'INSERT INTO history (diagram_id, version, content, comment, created_at) VALUES (?, ?, ?, ?, ?)',
+      [diagramId, newVersion, content, comment, new Date().toISOString()]
+    );
+
+    // Keep only last 50 versions
+    await this.db.run(
+      'DELETE FROM history WHERE diagram_id = ? AND id NOT IN (SELECT id FROM history WHERE diagram_id = ? ORDER BY created_at DESC LIMIT 50)',
+      [diagramId, diagramId]
+    );
+  }
+
+  async getVersion(diagramId: number, version: number): Promise<string | null> {
+    const result = await this.db.get(
+      'SELECT content FROM history WHERE diagram_id = ? AND version = ?',
+      [diagramId, version]
+    );
+    return result?.content || null;
+  }
+
+  async getHistory(diagramId: number): Promise<HistoryEntry[]> {
+    return this.db.all(
+      'SELECT version, comment, created_at FROM history WHERE diagram_id = ? ORDER BY created_at DESC',
+      [diagramId]
+    );
+  }
+}
+```
+
+### Data Flow for Persistence Operations
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as React UI
+    participant API as API Gateway
+    participant DB as Database Manager
+    participant SEC as Secure Storage
+
+    U->>UI: Create/modify diagram
+    UI->>API: Save diagram request
+    API->>DB: Begin transaction
+    API->>DB: Save to diagrams table
+    API->>DB: Save to autosave table
+    API->>DB: Commit transaction
+    API->>UI: Success response
+    UI->>U: Diagram saved
+
+    U->>UI: Close application
+    UI->>API: Save session data
+    API->>DB: Update last_accessed
+    API->>SEC: Store encrypted API keys
+    API->>UI: Session saved
+```
+
+---
+
+## Data Flow
+
+### Diagram Generation Flow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Client
+    participant A as API
+    participant I as AI Gateway
+    participant P as AI Provider
+    participant D as Draw.io Engine
+
+    U->>C: Enters diagram prompt
+    C->>A: POST /api/chat
+    A->>I: Generate diagram request
+    I->>P: API call to provider
+    P->>I: Streaming response
+    I->>A: Streamed XML response
+    A->>C: Streamed XML
+    C->>D: Render diagram
+    D->>C: Diagram display
+    C->>U: Show diagram
+```
+
+### File Processing Flow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Client
+    participant A as API
+    participant P as Processing Service
+
+    U->>C: Uploads file/image
+    C->>A: POST /api/parse-file
+    A->>P: File processing request
+    P->>P: Extract content/convert
+    P->>A: Processed diagram XML
+    A->>C: Diagram XML
+    C->>D: Render diagram
+    D->>C: Show diagram
+```
+
+### Persistence Operation Flow
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Client
+    participant A as API
+    participant DB as Database
+    participant FS as File System
+
+    U->>C: Creates/edits diagram
+    C->>A: Save diagram
+    A->>DB: Store in SQLite
+    A->>FS: Auto-save to disk
+    DB->>A: Confirm save
+    A->>C: Success response
+    C->>U: Diagram saved
+
+    U->>C: Closes app
+    C->>A: Final save
+    A->>DB: Update timestamps
+    A->>FS: Create backup
+    A->>C: Session saved
+```

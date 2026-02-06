@@ -1,6 +1,6 @@
 # AIO Canvas
 
-**AI-Powered Diagram Creation Tool - Chat, Draw, Visualize**
+**AI-Powered Diagram Creation Tool - Production Deployment**
 
 English | [中文](./docs/cn/README_CN.md) | [日本語](./docs/ja/README_JA.md)
 
@@ -8,19 +8,54 @@ English | [中文](./docs/cn/README_CN.md) | [日本語](./docs/ja/README_JA.md)
 [![Next.js](https://img.shields.io/badge/Next.js-16.x-black)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.x-61dafb)](https://react.dev/)
 
-# AIO Canvas - The AI-Powered draw.io Wrapper
+# AIO Canvas - Production-Ready AI-Powered draw.io Wrapper
 
-**AI-Powered Diagram Creation Tool - Chat, Draw, Visualize**
+**AI-Powered Diagram Creation Tool with Web & Desktop Deployment**
 
-**A wrapper and enhancement of draw.io with AI capabilities - Works as both web app and offline desktop application**
+AIO Canvas is a **production-ready AI-powered wrapper** around [draw.io](https://github.com/jgraph/drawio) that enhances the popular diagramming tool with natural language capabilities, working seamlessly as both a web application and a desktop application with persistent features.
 
-English | [中文](./docs/cn/README_CN.md) | [日本語](./docs/ja/README_JA.md)
+---
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Next.js](https://img.shields.io/badge/Next.js-16.x-black)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-19.x-61dafb)](https://react.dev/)
+## Production Deployment 🚀
 
-AIO Canvas is an **AI-powered wrapper** around [draw.io](https://github.com/jgraph/drawio) that enhances the popular diagramming tool with natural language capabilities, making it possible to create, modify, and enhance diagrams through AI-powered commands while maintaining offline functionality through our Electron desktop app.
+### Live Instance
+**[https://draw.nulled.ai](https://draw.nulled.ai)** - Production Status ✅
+
+- **Platform**: Docker containers with Caddy reverse proxy
+- **Backend**: Next.js 16 with API routes
+- **SSL**: Let's Encrypt auto-renewing certificates
+- **DNS**: draw.nulled.ai → 209.38.58.83
+- **Status**: Fully operational with AI diagram generation
+
+---
+
+## Desktop Application 💻
+
+### Current Features
+- **Full Offline Functionality**: Complete draw.io capability without internet
+- **Cross-Platform Support**: Windows, macOS, and Linux
+- **Native Performance**: System integration with file dialogs and notifications
+- **AI Integration**: Local AI model support (Ollama compatible)
+
+### Upcoming Desktop Persistence (Phase 2)
+- **Auto-Save**: Automatic diagram saving to local SQLite database
+- **History Management**: Version control with restore capabilities
+- **Recent Files**: Quick access to recently opened diagrams
+- **API Key Storage**: Encrypted API key management via Electron's safeStorage
+
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [MCP Server (Preview)](#mcp-server-preview)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Development](#development)
+- [Deployment](#deployment)
+- [Multi-Provider Support](#multi-provider-support)
+- [How It Works](#how-it-works)
+- [Architecture](#architecture)
 
 ## Table of Contents
 
@@ -51,6 +86,20 @@ AIO Canvas is an **AI-powered wrapper** around [draw.io](https://github.com/jgra
 - **Interactive Chat Interface**: Communicate with AI to refine your diagrams in real-time
 - **Cloud Architecture Diagram Support**: Specialized support for generating cloud architecture diagrams (AWS, GCP, Azure)
 - **Animated Connectors**: Create dynamic and animated connectors between diagram elements
+
+### 🖥️ Desktop Persistence Features (Phase 2)
+- **Local Database**: SQLite for persistent diagram storage
+- **Auto-Save**: Automatic diagram saving every 30 seconds
+- **History Management**: Version control with restore capabilities
+- **Recent Files**: Quick access to recently opened diagrams
+- **Configuration Storage**: Persisted settings and API keys
+- **Offline Mode**: Full functionality without internet connection
+
+### 🔒 Security Features
+- **API Key Encryption**: Secure storage using Electron's safeStorage
+- **Local Data Storage**: All data stored locally in your environment
+- **No Telemetry**: No data transmission to external servers
+- **Privacy First**: User data never leaves your machine
 
 ## MCP Server (Preview)
 
@@ -145,6 +194,10 @@ Open [http://localhost:6002](http://localhost:6002) in your browser.
 - **SSL**: Let's Encrypt (auto-renewing)
 - **Features**: Full AI diagram generation capabilities
 - **Status**: Production-ready
+
+### Production Deployment Guide
+
+[Go to Production Deployment Guide](./docs/deployment-guide.md)
 
 ### Vercel
 
