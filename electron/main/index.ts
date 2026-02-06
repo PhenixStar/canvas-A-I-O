@@ -3,10 +3,12 @@ import { buildAppMenu } from "./app-menu"
 import { getCurrentPresetEnv } from "./config-manager"
 import { loadEnvFile } from "./env-loader"
 import { registerIpcHandlers } from "./ipc-handlers"
+import { registerPersistenceHandlers } from "./persistence-handlers"
 import { startNextServer, stopNextServer } from "./next-server"
 import { applyProxyToEnv } from "./proxy-manager"
 import { registerSettingsWindowHandlers } from "./settings-window"
 import { createWindow, getMainWindow } from "./window-manager"
+import { closeDatabase } from "./storage-manager"
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock()
@@ -41,6 +43,7 @@ if (!gotTheLock) {
         // Register IPC handlers
         registerIpcHandlers()
         registerSettingsWindowHandlers()
+        registerPersistenceHandlers()
 
         // Build application menu
         buildAppMenu()
@@ -85,6 +88,7 @@ if (!gotTheLock) {
 
     app.on("before-quit", () => {
         stopNextServer()
+        closeDatabase()
     })
 
     // Open external links in default browser

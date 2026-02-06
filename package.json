@@ -18,7 +18,7 @@
         "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
         "electron:dev": "node scripts/electron-dev.mjs",
         "electron:build": "npm run build && npm run electron:compile",
-        "electron:compile": "npx esbuild electron/main/index.ts electron/preload/index.ts electron/preload/settings.ts --bundle --platform=node --outdir=dist-electron --external:electron --sourcemap --packages=external && npx shx cp -r electron/settings dist-electron/",
+        "electron:compile": "npx esbuild electron/main/index.ts electron/main/persistence-types.ts electron/main/database-schema.ts electron/main/storage-encryption.ts electron/main/storage-diagram-history.ts electron/main/storage-recent-files.ts electron/main/storage-auto-save.ts electron/main/storage-thumbnails.ts electron/main/storage-api-keys.ts electron/main/storage-manager.ts electron/main/persistence-handlers.ts electron/preload/index.ts electron/preload/settings.ts --bundle --platform=node --outdir=dist-electron --external:electron --sourcemap --packages=external && npx shx cp -r electron/settings dist-electron/",
         "electron:start": "npx cross-env NODE_ENV=development npx electron .",
         "electron:prepare": "node scripts/prepare-electron-build.mjs",
         "dist": "npm run electron:build && npm run electron:prepare && npx electron-builder --config electron/electron-builder.yml",
@@ -67,6 +67,7 @@
         "@xmldom/xmldom": "^0.9.8",
         "ai": "^6.0.1",
         "base-64": "^1.0.0",
+        "better-sqlite3": "^12.6.2",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "cmdk": "^1.1.1",
@@ -115,6 +116,7 @@
         "@testing-library/dom": "^10.4.1",
         "@testing-library/react": "^16.3.1",
         "@testing-library/user-event": "^14.6.1",
+        "@types/better-sqlite3": "^7.6.13",
         "@types/negotiator": "^0.6.4",
         "@types/node": "^24.0.0",
         "@types/pako": "^2.0.3",
@@ -145,6 +147,6 @@
         "@openrouter/ai-sdk-provider": {
             "ai": "^6.0.1"
         },
-        "fast-xml-parser": "^5.4.2"
+        "fast-xml-parser": "^5.3.4"
     }
 }
