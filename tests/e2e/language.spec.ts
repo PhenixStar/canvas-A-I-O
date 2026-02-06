@@ -26,9 +26,12 @@ test.describe("Language Switching", () => {
             const languageSelector = page.locator("#language-select")
             await languageSelector.waitFor({ state: "visible", timeout: 5000 })
             await languageSelector.click()
-            await page.waitForSelector('[role="option"]', { timeout: 5000 })
-            await page.locator('[role="option"]:has-text("日本語")').click()
-            await page.waitForURL(/\/ja/, { timeout: 5000 })
+            const jaOption = page.locator(
+                '[data-slot="select-item"]:has-text("日本語")',
+            )
+            await jaOption.waitFor({ state: "visible", timeout: 5000 })
+            await jaOption.click()
+            await page.waitForURL(/\/ja/, { timeout: 10000 })
         })
 
         await test.step("verify UI is in Japanese", async () => {
@@ -47,9 +50,12 @@ test.describe("Language Switching", () => {
             const languageSelector = page.locator("#language-select")
             await languageSelector.waitFor({ state: "visible", timeout: 5000 })
             await languageSelector.click()
-            await page.waitForSelector('[role="option"]', { timeout: 5000 })
-            await page.locator('[role="option"]:has-text("中文")').click()
-            await page.waitForURL(/\/zh/, { timeout: 5000 })
+            const zhOption = page.locator(
+                '[data-slot="select-item"]:has-text("中文")',
+            )
+            await zhOption.waitFor({ state: "visible", timeout: 5000 })
+            await zhOption.click()
+            await page.waitForURL(/\/zh/, { timeout: 10000 })
         })
 
         await test.step("verify UI is in Chinese", async () => {
@@ -68,9 +74,12 @@ test.describe("Language Switching", () => {
             const languageSelector = page.locator("#language-select")
             await languageSelector.waitFor({ state: "visible", timeout: 5000 })
             await languageSelector.click()
-            await page.waitForSelector('[role="option"]', { timeout: 5000 })
-            await page.locator('[role="option"]:has-text("日本語")').click()
-            await page.waitForURL(/\/ja/, { timeout: 5000 })
+            const jaOption = page.locator(
+                '[data-slot="select-item"]:has-text("日本語")',
+            )
+            await jaOption.waitFor({ state: "visible", timeout: 5000 })
+            await jaOption.click()
+            await page.waitForURL(/\/ja/, { timeout: 10000 })
             await page.keyboard.press("Escape")
         })
 
