@@ -1419,12 +1419,12 @@ export async function generateMetadata({
         authors: [{ name: "Next AI Draw.io" }],
         creator: "Next AI Draw.io",
         publisher: "Next AI Draw.io",
-        metadataBase: new URL("https://next-ai-drawio.jiang.jp"),
+        metadataBase: new URL("https://draw.nulled.ai"),
         openGraph: {
             title: titles[lang],
             description: descriptions[lang],
             type: "website",
-            url: "https://next-ai-drawio.jiang.jp",
+            url: "https://draw.nulled.ai",
             siteName: "Next AI Draw.io",
             locale:
                 lang === "zh"
@@ -1494,7 +1494,7 @@ export default async function RootLayout({
         operatingSystem: "Web Browser",
         description:
             "AI-powered diagram generator with targeted XML editing capabilities that integrates with draw.io for creating AWS architecture diagrams, flowcharts, and technical diagrams. Features diagram history, multi-provider AI support, and real-time collaboration.",
-        url: "https://next-ai-drawio.jiang.jp",
+        url: "https://draw.nulled.ai",
         inLanguage: validLang,
         offers: {
             "@type": "Offer",
