@@ -43,9 +43,7 @@ export interface UseDiagramHistoryReturn {
  * })
  * ```
  */
-export function useDiagramHistory(
-    diagramId: string,
-): UseDiagramHistoryReturn {
+export function useDiagramHistory(diagramId: string): UseDiagramHistoryReturn {
     const [history, setHistory] = useState<DiagramHistoryEntry[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -55,8 +53,7 @@ export function useDiagramHistory(
      * Check if running in Electron environment
      */
     const isElectron =
-        typeof window !== "undefined" &&
-        (window as any).electronAPI?.isElectron
+        typeof window !== "undefined" && (window as any).electronAPI?.isElectron
 
     /**
      * Load history from persistence layer
@@ -91,10 +88,9 @@ export function useDiagramHistory(
             }
 
             // Electron: use IPC
-            const entries =
-                await (window as any).electronAPI.persistence.getDiagramHistory(
-                    diagramId,
-                )
+            const entries = await (
+                window as any
+            ).electronAPI.persistence.getDiagramHistory(diagramId)
             setHistory(entries)
             setLastFetch(now)
         } catch (err) {

@@ -3,12 +3,12 @@ import { buildAppMenu } from "./app-menu"
 import { getCurrentPresetEnv } from "./config-manager"
 import { loadEnvFile } from "./env-loader"
 import { registerIpcHandlers } from "./ipc-handlers"
-import { registerPersistenceHandlers } from "./persistence-handlers"
 import { startNextServer, stopNextServer } from "./next-server"
+import { registerPersistenceHandlers } from "./persistence-handlers"
 import { applyProxyToEnv } from "./proxy-manager"
 import { registerSettingsWindowHandlers } from "./settings-window"
-import { createWindow, getMainWindow } from "./window-manager"
 import { closeDatabase } from "./storage-manager"
+import { createWindow, getMainWindow } from "./window-manager"
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock()

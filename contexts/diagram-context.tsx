@@ -5,16 +5,16 @@ import { createContext, useContext, useEffect, useRef, useState } from "react"
 import type { DrawIoEmbedRef } from "react-drawio"
 import { toast } from "sonner"
 import type { ExportFormat } from "@/components/save-dialog"
+import { useAPIKeys } from "@/hooks/use-api-keys"
+import { useAutoSave } from "@/hooks/use-auto-save"
+import { useDiagramHistory } from "@/hooks/use-diagram-history"
+import { useRecentFiles } from "@/hooks/use-recent-files"
 import { getApiEndpoint } from "@/lib/base-path"
 import {
     extractDiagramXML,
     isRealDiagram,
     validateAndFixXml,
 } from "../lib/utils"
-import { useAPIKeys } from "@/hooks/use-api-keys"
-import { useAutoSave } from "@/hooks/use-auto-save"
-import { useDiagramHistory } from "@/hooks/use-diagram-history"
-import { useRecentFiles } from "@/hooks/use-recent-files"
 
 interface DiagramContextType {
     chartXML: string
@@ -62,7 +62,11 @@ interface DiagramContextType {
         loading: boolean
     }
     saveNow: () => Promise<void>
-    addRecentFile: (file: { filePath: string; fileName: string; thumbnail?: string }) => Promise<void>
+    addRecentFile: (file: {
+        filePath: string
+        fileName: string
+        thumbnail?: string
+    }) => Promise<void>
 }
 
 const DiagramContext = createContext<DiagramContextType | undefined>(undefined)
@@ -77,7 +81,9 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
     const [showSaveDialog, setShowSaveDialog] = useState(false)
 
     // Persistence state
-    const [currentDiagramId, setCurrentDiagramId] = useState<string | null>(null)
+    const [currentDiagramId, setCurrentDiagramId] = useState<string | null>(
+        null,
+    )
 
     // Initialize persistence hooks
     // Auto-save: only enable when we have a diagram ID and real diagram content
@@ -89,9 +95,7 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
     )
 
     // Diagram history: track versions for undo/redo
-    const diagramHistoryPersistence = useDiagramHistory(
-        currentDiagramId || "",
-    )
+    const diagramHistoryPersistence = useDiagramHistory(currentDiagramId || "")
 
     // Recent files: track file operations
     const recentFiles = useRecentFiles(20)
@@ -314,14 +318,16 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
             // Save to persistent history storage
             if (currentDiagramId && extractedXML) {
                 currentVersionRef.current += 1
-                diagramHistoryPersistence.addEntry({
-                    diagramId: currentDiagramId,
-                    version: currentVersionRef.current,
-                    data: extractedXML,
-                    description: `Version ${currentVersionRef.current}`,
-                }).catch(err => {
-                    console.warn("Failed to save to history:", err)
-                })
+                diagramHistoryPersistence
+                    .addEntry({
+                        diagramId: currentDiagramId,
+                        version: currentVersionRef.current,
+                        data: extractedXML,
+                        description: `Version ${currentVersionRef.current}`,
+                    })
+                    .catch((err) => {
+                        console.warn("Failed to save to history:", err)
+                    })
             }
 
             expectHistoryExportRef.current = false
@@ -445,9 +451,11 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Helper to add file to recent files
-    const addRecentFile = async (
-        file: { filePath: string; fileName: string; thumbnail?: string },
-    ) => {
+    const addRecentFile = async (file: {
+        filePath: string
+        fileName: string
+        thumbnail?: string
+    }) => {
         try {
             await recentFiles.addFile(file)
         } catch (err) {
@@ -463,9 +471,8 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Check if running in Electron
-    const isElectron =
-        typeof window !== "undefined" &&
-        (window as any).electronAPI?.isElectron
+    const _isElectron =
+        typeof window !== "undefined" && (window as any).electronAPI?.isElectron
 
     return (
         <DiagramContext.Provider

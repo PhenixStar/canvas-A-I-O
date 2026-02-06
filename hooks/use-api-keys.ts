@@ -35,8 +35,7 @@ const COMMON_PROVIDERS = [
 ] as const
 
 const isElectron =
-    typeof window !== "undefined" &&
-    (window as any).electronAPI?.isElectron
+    typeof window !== "undefined" && (window as any).electronAPI?.isElectron
 
 /**
  * Helper to get keys from localStorage
@@ -98,10 +97,9 @@ export function useAPIKeys(): UseAPIKeysReturn {
             } else {
                 for (const provider of COMMON_PROVIDERS) {
                     try {
-                        const key =
-                            await (window as any).electronAPI.persistence.getApiKey(
-                                provider,
-                            )
+                        const key = await (
+                            window as any
+                        ).electronAPI.persistence.getApiKey(provider)
                         if (key) {
                             keyMap.set(provider, { provider, hasKey: true })
                         }
@@ -113,7 +111,9 @@ export function useAPIKeys(): UseAPIKeysReturn {
 
             setKeys(keyMap)
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to load API keys")
+            setError(
+                err instanceof Error ? err.message : "Failed to load API keys",
+            )
             console.error("Failed to load API keys:", err)
         } finally {
             setLoading(false)
@@ -163,7 +163,11 @@ export function useAPIKeys(): UseAPIKeysReturn {
                     return updated
                 })
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to store API key")
+                setError(
+                    err instanceof Error
+                        ? err.message
+                        : "Failed to store API key",
+                )
                 console.error("Failed to store API key:", err)
                 throw err
             }
@@ -193,7 +197,11 @@ export function useAPIKeys(): UseAPIKeysReturn {
                     provider,
                 )
             } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to get API key")
+                setError(
+                    err instanceof Error
+                        ? err.message
+                        : "Failed to get API key",
+                )
                 console.error("Failed to get API key:", err)
                 return null
             }
@@ -204,45 +212,42 @@ export function useAPIKeys(): UseAPIKeysReturn {
     /**
      * Delete API key for a provider
      */
-    const deleteKey = useCallback(
-        async (provider: string): Promise<void> => {
-            if (!provider) {
-                setError("Provider is required")
-                return
-            }
+    const deleteKey = useCallback(async (provider: string): Promise<void> => {
+        if (!provider) {
+            setError("Provider is required")
+            return
+        }
 
-            setError(null)
+        setError(null)
 
-            try {
-                if (!isElectron) {
-                    const storedKeys = getWebKeys()
-                    delete storedKeys[provider]
-                    setWebKeys(storedKeys)
-                    setKeys((prev) => {
-                        const updated = new Map(prev)
-                        updated.delete(provider)
-                        return updated
-                    })
-                    return
-                }
-
-                await (window as any).electronAPI.persistence.deleteApiKey(
-                    provider,
-                )
-
+        try {
+            if (!isElectron) {
+                const storedKeys = getWebKeys()
+                delete storedKeys[provider]
+                setWebKeys(storedKeys)
                 setKeys((prev) => {
                     const updated = new Map(prev)
                     updated.delete(provider)
                     return updated
                 })
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to delete API key")
-                console.error("Failed to delete API key:", err)
-                throw err
+                return
             }
-        },
-        [],
-    )
+
+            await (window as any).electronAPI.persistence.deleteApiKey(provider)
+
+            setKeys((prev) => {
+                const updated = new Map(prev)
+                updated.delete(provider)
+                return updated
+            })
+        } catch (err) {
+            setError(
+                err instanceof Error ? err.message : "Failed to delete API key",
+            )
+            console.error("Failed to delete API key:", err)
+            throw err
+        }
+    }, [])
 
     // Load keys on mount
     useEffect(() => {

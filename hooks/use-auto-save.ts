@@ -62,8 +62,7 @@ export function useAutoSave(
      * Check if running in Electron environment
      */
     const isElectron =
-        typeof window !== "undefined" &&
-        (window as any).electronAPI?.isElectron
+        typeof window !== "undefined" && (window as any).electronAPI?.isElectron
 
     /**
      * Perform the actual save operation
@@ -165,10 +164,9 @@ export function useAutoSave(
                 }
 
                 // Electron: use IPC
-                const entry =
-                    await (window as any).electronAPI.persistence.getAutoSave(
-                        diagramId,
-                    )
+                const entry = await (
+                    window as any
+                ).electronAPI.persistence.getAutoSave(diagramId)
 
                 if (entry) {
                     setLastSaved(entry.timestamp)

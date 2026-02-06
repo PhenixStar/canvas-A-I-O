@@ -49,8 +49,7 @@ export function useRecentFiles(limit: number = 20): UseRecentFilesReturn {
      * Check if running in Electron environment
      */
     const isElectron =
-        typeof window !== "undefined" &&
-        (window as any).electronAPI?.isElectron
+        typeof window !== "undefined" && (window as any).electronAPI?.isElectron
 
     /**
      * Load recent files from storage
@@ -75,17 +74,18 @@ export function useRecentFiles(limit: number = 20): UseRecentFilesReturn {
             }
 
             // Electron: use IPC
-            const recentFiles =
-                await (window as any).electronAPI.persistence.getRecentFiles(
-                    limit,
-                )
+            const recentFiles = await (
+                window as any
+            ).electronAPI.persistence.getRecentFiles(limit)
 
             // In Electron, we could also check if files still exist
             // For now, just return them as-is
             setFiles(recentFiles)
         } catch (err) {
             const message =
-                err instanceof Error ? err.message : "Failed to load recent files"
+                err instanceof Error
+                    ? err.message
+                    : "Failed to load recent files"
             setError(message)
             console.error("Failed to load recent files:", err)
         } finally {
@@ -97,7 +97,9 @@ export function useRecentFiles(limit: number = 20): UseRecentFilesReturn {
      * Add file to recent files list
      */
     const addFile = useCallback(
-        async (file: Omit<RecentFile, "id" | "lastAccessed">): Promise<void> => {
+        async (
+            file: Omit<RecentFile, "id" | "lastAccessed">,
+        ): Promise<void> => {
             setError(null)
 
             try {
@@ -112,7 +114,9 @@ export function useRecentFiles(limit: number = 20): UseRecentFilesReturn {
                     const files: RecentFile[] = stored ? JSON.parse(stored) : []
 
                     // Remove duplicate entries
-                    const filtered = files.filter((f) => f.filePath !== file.filePath)
+                    const filtered = files.filter(
+                        (f) => f.filePath !== file.filePath,
+                    )
 
                     // Add new file at the beginning
                     const fileWithId: RecentFile = {
