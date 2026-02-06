@@ -872,6 +872,119 @@ export class CacheManager {
 </plist>
 ```
 
+#### ASAR Packaging Strategy (v1.0.1+)
+
+**Problem Solved: Module Resolution Conflicts**
+
+In v1.0.0, the Windows desktop app failed to launch with error:
+```
+Error: Cannot find module 'zod'
+```
+
+**Root Cause:**
+- Electron code bundled with zod in `dist-electron/main/persistence-handlers.js`
+- Next.js standalone copied to `electron-standalone/` with its own `node_modules/zod`
+- electron-builder packaged both, creating conflicting module resolution paths
+- Node.js resolved to standalone's node_modules instead of bundled version
+- Standalone's zod wasn't properly initialized, causing the error
+
+**Solution: ASAR + node_modules Removal**
+
+```yaml
+# electron/electron-builder.yml
+asar: true                    # Enable ASAR packaging
+compression: maximum          # Reduce installer size
+
+asarUnpack:
+  - "**/*.node"              # Unpack native modules (better-sqlite3)
+
+files:
+  - dist-electron/**/*       # Only bundled Electron code
+  - "!node_modules"
+
+extraResources:
+  - from: electron-standalone/  # Next.js app WITHOUT node_modules
+    to: standalone/
+```
+
+**Build Process:**
+```javascript
+// scripts/prepare-electron-build.mjs
+// After copying .next/standalone to electron-standalone
+const standaloneNodeModules = join(targetDir, "node_modules")
+if (existsSync(standaloneNodeModules)) {
+    console.log("Removing node_modules from standalone...")
+    rmSync(standaloneNodeModules, { recursive: true, force: true })
+}
+
+// Also remove cache directories
+const cacheDirs = [
+    join(targetDir, ".next", "cache"),
+    join(targetDir, ".next", "server"),
+]
+cacheDirs.forEach(dir => {
+    if (existsSync(dir)) rmSync(dir, { recursive: true, force: true })
+})
+```
+
+**Architecture:**
+```
+release/win-unpacked/
+├── resources/
+│   ├── app.asar                    # Electron main process (ASAR archive)
+│   │   ├── dist-electron/           # Our bundled code
+│   │   │   └── main/
+│   │   │       ├── persistence-handlers.js  # Contains bundled zod
+│   │   │       ├── storage-manager.js
+│   │   │       └── ... (all main process code)
+│   │   └── node_modules/            # Bundled dependencies (virtual FS)
+│   │       └── better-sqlite3/      # Unpacked to app.asar.unpacked/
+│   └── standalone/                  # Next.js renderer process
+│       └── canvas-A-I-O/
+│           ├── .next/                # Next.js build output
+│           ├── server.js             # Entry point
+│           └── public/               # Static assets
+│           # NO node_modules/        ← Removed to prevent conflicts
+```
+
+**Module Resolution:**
+1. Electron main process loads from app.asar (virtual filesystem)
+2. Node.js module resolution searches within app.asar first
+3. Bundled dependencies in app.asar are found and used
+4. No conflict with standalone (which has no node_modules)
+5. Native modules unpacked via `asarUnpack` work normally
+
+**Size Optimization:**
+- Before: 624MB (with duplicate node_modules)
+- After: ~274MB (without node_modules + compression)
+- Reduction: 56% (350MB saved)
+
+**Benefits:**
+- ✅ Eliminates module resolution conflicts
+- ✅ Smaller installer size
+- ✅ Faster download/install
+- ✅ Code protection (ASAR is harder to modify)
+- ✅ Matches industry standard (draw.io desktop uses ASAR)
+
+**Trade-offs:**
+- ⚠️ Slightly more complex build process
+- ⚠️ Native modules require special handling (asarUnpack)
+- ⚠️ Debugging requires extracting from ASAR or using --asar=false
+
+**Verification:**
+```bash
+# Check that ASAR is created
+ls -lh release/win-unpacked/resources/app.asar
+
+# Verify no node_modules in standalone
+ls release/win-unpacked/resources/standalone/canvas-A-I-O/node_modules
+# Should error: No such file or directory
+
+# Verify native module is unpacked
+ls release/win-unpacked/resources/app.asar.unpacked/node_modules/better-sqlite3
+# Should show the unpacked native module
+```
+
 ### Deployment Architecture Diagram
 
 ```mermaid

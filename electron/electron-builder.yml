@@ -2,6 +2,7 @@ appId: com.nextaidrawio.app
 productName: Next AI Draw.io
 copyright: Copyright © 2024 Next AI Draw.io
 electronVersion: 39.2.7
+asar: true
 
 directories:
   output: release
@@ -11,13 +12,22 @@ afterPack: ./scripts/afterPack.cjs
 
 files:
   - dist-electron/**/*
-  - "!node_modules"
+  - "!node_modules/**/*"
+  # Include better-sqlite3 for unpacking (native module)
+  - "node_modules/better-sqlite3/**"
 
+# Unpack native modules completely (not just .node files)
+# Native modules like better-sqlite3 have JS bindings that need
+# to access the .node file, which doesn't work from ASAR
 asarUnpack:
+  - "node_modules/better-sqlite3/**"
   - "**/*.node"
 
+# Compression for size optimization
+compression: maximum
+
 extraResources:
-  # Copy prepared standalone directory (includes node_modules)
+  # Copy prepared standalone directory (server.js has everything bundled)
   - from: electron-standalone/
     to: standalone/
   # Copy icon for runtime use (Windows/Linux)

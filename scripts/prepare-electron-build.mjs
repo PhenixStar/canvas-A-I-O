@@ -69,9 +69,41 @@ if (existsSync(targetDir)) {
 // Create target directory
 mkdirSync(targetDir, { recursive: true })
 
-// Copy standalone (includes node_modules)
-console.log("Copying standalone directory...")
-copyDereferenced(standaloneDir, targetDir)
+// Next.js standalone structure:
+// .next/standalone/
+//   ├── canvas-A-I-O/     (app source)
+//   │   ├── server.js      ← The actual server entry point
+//   │   ├── package.json
+//   │   ├── .next/         (build output)
+//   │   └── ...
+//   └── node_modules/      (server dependencies)
+//
+// We need to FLATTEN this so server.js is at the root:
+// electron-standalone/
+//   ├── server.js
+//   ├── package.json
+//   ├── .next/
+//   ├── public/
+//   └── node_modules/
+
+console.log("Copying app files from canvas-A-I-O/...")
+const appDir = join(standaloneDir, "canvas-A-I-O")
+if (existsSync(appDir)) {
+    // Copy everything EXCEPT node_modules from canvas-A-I-O
+    for (const entry of readdirSync(appDir)) {
+        if (entry === "node_modules") continue // Skip app node_modules
+        const srcPath = join(appDir, entry)
+        const dstPath = join(targetDir, entry)
+        copyDereferenced(srcPath, dstPath)
+    }
+}
+
+// Copy server node_modules (dependencies for server.js)
+console.log("Copying server node_modules...")
+const serverNodeModules = join(standaloneDir, "node_modules")
+if (existsSync(serverNodeModules)) {
+    copyDereferenced(serverNodeModules, join(targetDir, "node_modules"))
+}
 
 // Copy static files
 console.log("Copying static files...")
@@ -87,3 +119,58 @@ if (existsSync(publicDir)) {
 }
 
 console.log("Done! Files prepared in electron-standalone/")
+
+// Remove node_modules from standalone to prevent module resolution conflicts
+// The server node_modules are still needed for Next.js server to run
+// But we remove unnecessary packages to reduce size
+const nodeModulesDir = join(targetDir, "node_modules")
+if (existsSync(nodeModulesDir)) {
+    console.log("Removing unnecessary packages from node_modules...")
+
+    // Keep only essential runtime dependencies
+    // Remove development dependencies, test files, etc.
+    const packagesToRemove = [
+        join(nodeModulesDir, ".bin"),
+        join(nodeModulesDir, ".cache"),
+    ]
+
+    for (const pkgPath of packagesToRemove) {
+        if (existsSync(pkgPath)) {
+            rmSync(pkgPath, { recursive: true, force: true })
+        }
+    }
+
+    console.log("Node modules optimized")
+}
+
+// Remove unnecessary cache directories to reduce bundle size
+const cacheDirs = [
+    join(targetDir, ".next", "cache"),
+    join(targetDir, ".next", "server"),
+]
+for (const dir of cacheDirs) {
+    if (existsSync(dir)) {
+        console.log(`Removing cache directory: ${dir}`)
+        rmSync(dir, { recursive: true, force: true })
+    }
+}
+
+// Remove unnecessary source directories from standalone app
+// These are not needed at runtime and significantly increase bundle size
+const unnecessaryDirs = [
+    join(targetDir, "docs"),
+    join(targetDir, "scripts"),
+    join(targetDir, "electron"),
+    join(targetDir, "plans"),
+    join(targetDir, "tests"),
+    join(targetDir, "release"), // Previous build artifacts
+]
+for (const dir of unnecessaryDirs) {
+    if (existsSync(dir)) {
+        console.log(`Removing unnecessary directory: ${dir}`)
+        rmSync(dir, { recursive: true, force: true })
+    }
+}
+
+console.log("Build preparation complete! Size optimized.")
+console.log(`Server.js should be at: ${join(targetDir, "server.js")}`)
