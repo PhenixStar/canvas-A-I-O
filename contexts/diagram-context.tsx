@@ -470,10 +470,6 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
-    // Check if running in Electron
-    const _isElectron =
-        typeof window !== "undefined" && (window as any).electronAPI?.isElectron
-
     return (
         <DiagramContext.Provider
             value={{
