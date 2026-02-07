@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     }
 
     // Get user ID for tracking
-    const userId = getUserIdFromRequest(req)
+    const userId = await getUserIdFromRequest(req)
 
     try {
         // Find the most recent chat trace for this session to attach the score to

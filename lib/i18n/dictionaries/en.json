@@ -292,6 +292,28 @@
         "improveWithSuggestions": "Improve with Suggestions",
         "regenerateWithFeedback": "Regenerate the diagram using the validation feedback"
     },
+    "auth": {
+        "loginTitle": "Welcome back",
+        "loginDescription": "Sign in to your account to continue",
+        "registerTitle": "Create an account",
+        "registerDescription": "Enter your details to get started",
+        "email": "Email",
+        "emailPlaceholder": "name@example.com",
+        "password": "Password",
+        "passwordPlaceholder": "Enter your password",
+        "name": "Name",
+        "namePlaceholder": "Your name",
+        "login": "Sign In",
+        "register": "Sign Up",
+        "logout": "Sign Out",
+        "orContinueWith": "or continue with",
+        "noAccount": "Don't have an account?",
+        "hasAccount": "Already have an account?",
+        "loginFailed": "Invalid email or password",
+        "registerFailed": "Registration failed. Please try again.",
+        "profile": "Profile",
+        "signedInAs": "Signed in as"
+    },
     "modelConfig": {
         "title": "AI Model Configuration",
         "description": "Configure multiple AI providers and models",

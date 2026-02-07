@@ -1,6 +1,14 @@
 ﻿"use client"
 
-import { ChevronRight, Github, Info, Moon, Sun, Tag } from "lucide-react"
+import {
+    ChevronRight,
+    Github,
+    Info,
+    LogOut,
+    Moon,
+    Sun,
+    Tag,
+} from "lucide-react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Suspense, useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -23,6 +31,7 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { useDictionary } from "@/hooks/use-dictionary"
+import { authClient } from "@/lib/auth-client"
 import { getApiEndpoint } from "@/lib/base-path"
 import { i18n, type Locale } from "@/lib/i18n/config"
 import { STORAGE_KEYS } from "@/lib/storage"
@@ -113,6 +122,8 @@ function SettingsContent({
     const [httpProxy, setHttpProxy] = useState("")
     const [httpsProxy, setHttpsProxy] = useState("")
     const [isApplyingProxy, setIsApplyingProxy] = useState(false)
+
+    const { data: session } = authClient.useSession()
 
     useEffect(() => {
         // Only fetch if not cached in localStorage
@@ -286,6 +297,31 @@ function SettingsContent({
             {/* Content */}
             <div className="px-6 pb-6">
                 <div className="divide-y divide-border-subtle">
+                    {/* User Profile */}
+                    {session?.user && (
+                        <SettingItem
+                            label={dict.auth.profile}
+                            description={`${dict.auth.signedInAs} ${session.user.email}`}
+                        >
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-9 gap-2 rounded-xl"
+                                onClick={async () => {
+                                    await authClient.signOut()
+                                    const segments = pathname
+                                        .split("/")
+                                        .filter(Boolean)
+                                    const lang = segments[0] || "en"
+                                    router.push(`/${lang}/login`)
+                                }}
+                            >
+                                <LogOut className="h-3.5 w-3.5" />
+                                {dict.auth.logout}
+                            </Button>
+                        </SettingItem>
+                    )}
+
                     {/* API Keys & Models */}
                     {onOpenModelConfig && (
                         <SettingItem

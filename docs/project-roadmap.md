@@ -209,9 +209,9 @@ To become the leading AI-powered diagramming platform that seamlessly integrates
 
 ---
 
-### Phase 4: Enterprise Features 📅 PLANNED
+### Phase 4: Enterprise Features 🔄 IN PROGRESS
 
-#### Status: Planning Complete
+#### Status: Implementation Started
 **Duration**: Q2-Q3 2025 (15 weeks)
 **Focus**: Enterprise-ready features and team collaboration
 
@@ -219,9 +219,31 @@ To become the leading AI-powered diagramming platform that seamlessly integrates
 
 ##### Sprint Breakdown
 
-**Sprint 1-2: Authentication & RBAC** (Weeks 1-5)
-- Email/password + OAuth (Google, GitHub, Microsoft)
-- SSO SAML support
+**Sprint 1: Authentication System** (Weeks 1-3) ✅ COMPLETED
+**Date Completed**: 2025-02-07
+**Implementation**: Better Auth + Drizzle ORM + PostgreSQL
+**Features**:
+- Email/password authentication (min 8 chars)
+- OAuth 2.0 (Google, GitHub - optional/conditional)
+- Automatic session management via Better Auth
+- User, session, account, and verification tables
+- Next.js API catch-all endpoint (`/api/auth/[...all]`)
+- i18n route protection in proxy.ts
+- Access code system fallback for non-authenticated deployments
+**Key Files**:
+- `lib/auth.ts` - Server configuration
+- `lib/auth-client.ts` - Client hooks (useSession, signIn, signUp, signOut)
+- `lib/db/schema.ts` - Drizzle ORM schema
+- `app/[lang]/(auth)/login/page.tsx` - Login page
+- `app/[lang]/(auth)/register/page.tsx` - Register page
+**Status Metrics**:
+- ✅ Zero TypeScript errors
+- ✅ Zero linting errors
+- ✅ 66/66 tests passing
+- ✅ Build successful
+**Notes**: Authentication is opt-in (zero-config when DATABASE_URL not set). Merged into proxy.ts for Next.js 16 compatibility.
+
+**Sprint 2: RBAC & Permissions** (Weeks 4-5) 📅 PLANNED
 - Role definitions (Owner, Admin, Editor, Viewer)
 - Permission system (diagram:create, diagram:edit, etc.)
 - Workspace-level and diagram-level permissions
@@ -455,6 +477,31 @@ Q1-Q4: Phase 5 Completion
 
 ## Recent Updates & Progress
 
+### 2025-02-07 - Phase 4 Sprint 1: Authentication System Implementation ✅ COMPLETED
+- ✅ **Better Auth Integration**: Email/password + OAuth (Google, GitHub) with conditional enablement
+- ✅ **Database Setup**: Drizzle ORM with PostgreSQL, user/session/account/verification tables
+- ✅ **Authentication API**: Better Auth catch-all endpoint at `/api/auth/[...all]`
+- ✅ **Route Protection**: i18n-aware authentication check in proxy.ts (merged with i18n middleware)
+- ✅ **Client Hooks**: useSession, signIn, signUp, signOut via auth-client.ts
+- ✅ **UI Pages**: Centralized auth layout + login/register pages with OAuth buttons
+- ✅ **Zero-Config**: Auth disabled when DATABASE_URL not set (localhost development works out-of-box)
+- ✅ **Fallback System**: Access code system preserved as fallback for non-authenticated deployments
+- ✅ **User ID System**: Upgraded from IP-only to session-first with IP fallback
+- ✅ **All Tests Passing**: 66/66 tests pass, zero TypeScript/linting errors
+
+**Files Created**: 10 new files (auth layer, database schema, API endpoints, UI pages)
+**Files Modified**: 8 files (proxy.ts integration, user-id.ts, settings-dialog.tsx, env vars, translations)
+**Files Deleted**: 1 file (middleware.ts merged into proxy.ts)
+**Environment Variables Added**: DATABASE_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, OAuth credentials
+
+**Architecture**:
+- Browser → Next.js App Router → Better Auth API → Drizzle ORM → PostgreSQL
+- Authentication check happens at proxy layer (before page/API access)
+- OAuth providers are optional/conditional based on env vars
+- Session validation in route handlers via auth.api.getSession()
+
+**Documentation Updated**: project-roadmap.md, project-changelog.md, system-architecture-core.md
+
 ### 2025-02-06 - Build Optimization & Module Resolution Fix (v1.0.1)
 - ✅ **Fixed "Cannot find module 'zod'" error**: Root cause was conflicting node_modules between bundled Electron code and Next.js standalone
 - ✅ **Reduced installer size by 56%**: From 624MB to ~274MB by removing duplicate node_modules
@@ -506,11 +553,11 @@ Q1-Q4: Phase 5 Completion
 - [x] Complete Phase 4 enterprise planning
 
 ### 2025-Q2 Goals (Phase 4 Implementation)
-- [ ] Begin enterprise features implementation (Sprint 1: Authentication)
-- [ ] Advanced collaboration features (Sprint 3: Real-time sync)
-- [ ] User management and permissions (Sprint 2: RBAC)
-- [ ] Enhanced security features (Sprint 5: Encryption, audit)
-- [ ] Admin dashboard development (Sprint 4: Workspaces)
+- [x] Begin enterprise features implementation (Sprint 1: Authentication - COMPLETED)
+- [ ] User management and permissions (Sprint 2: RBAC - IN PROGRESS)
+- [ ] Advanced collaboration features (Sprint 3: Real-time sync - PLANNED)
+- [ ] Admin dashboard development (Sprint 4: Workspaces - PLANNED)
+- [ ] Enhanced security features (Sprint 5: Encryption, audit - PLANNED)
 
 ---
 

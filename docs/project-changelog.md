@@ -4,6 +4,230 @@ This document records all significant changes, features, and fixes in AIO Canvas
 
 ---
 
+## [1.1.0] - 2025-02-07
+
+### Phase 4 Sprint 1: Authentication System Implementation ✅ COMPLETED
+
+#### Features Added
+
+**Authentication Core** (Better Auth + PostgreSQL)
+- ✅ `lib/auth.ts` (95 LOC)
+  - Better Auth server configuration with Drizzle adapter
+  - Email/password strategy with minimum 8 characters
+  - OAuth 2.0 providers (Google, GitHub) with conditional enablement
+  - BETTER_AUTH_SECRET validation
+  - Session configuration with secure cookie options
+
+- ✅ `lib/auth-client.ts` (45 LOC)
+  - Better Auth client initialization
+  - Custom hooks: useSession, signIn, signUp, signOut
+  - Client-side session state management
+  - Type-safe API integration
+
+**Database Layer** (Drizzle ORM)
+- ✅ `lib/db/index.ts` (25 LOC)
+  - PostgreSQL connection via pg.Pool
+  - Connection pooling configuration
+  - Database initialization
+
+- ✅ `lib/db/schema.ts` (120 LOC)
+  - User table with email/name/image fields
+  - Session table for session management
+  - Account table for OAuth provider linking
+  - Verification table for email verification tokens
+  - Proper indexes and foreign keys
+
+- ✅ `drizzle.config.ts` (15 LOC)
+  - Drizzle migration configuration
+  - PostgreSQL dialect setup
+
+**API Endpoints**
+- ✅ `app/api/auth/[...all]/route.ts` (35 LOC)
+  - Catch-all endpoint for Better Auth routes
+  - Handles /auth/signin, /auth/signup, /auth/callback, /auth/session, etc.
+  - Error handling and response formatting
+
+**UI Pages**
+- ✅ `app/[lang]/(auth)/layout.tsx` (25 LOC)
+  - Centered authentication layout with gradient background
+  - Responsive design for all screen sizes
+  - Dark mode support
+
+- ✅ `app/[lang]/(auth)/login/page.tsx` (80 LOC)
+  - Email/password login form
+  - OAuth button integration
+  - Form validation and error handling
+  - Remember me functionality
+  - Link to registration page
+
+- ✅ `app/[lang]/(auth)/register/page.tsx` (85 LOC)
+  - Email/password registration form
+  - Form validation with error messages
+  - OAuth button integration
+  - Password confirmation
+  - Link to login page
+
+**OAuth Integration**
+- ✅ `components/auth/oauth-buttons.tsx` (40 LOC)
+  - Shared OAuth button component
+  - Google and GitHub provider buttons
+  - Conditional rendering based on provider availability
+  - Loading states and error handling
+
+**Route Protection**
+- ✅ `proxy.ts` (merged with i18n middleware)
+  - Authentication check for API routes
+  - Redirect unauthenticated page requests to login
+  - Preserve callbackUrl for post-login redirect
+  - Access code check skipped for authenticated users
+  - Session cookie validation before page access
+
+**User ID System Upgrade**
+- ✅ `lib/user-id.ts`
+  - Changed from IP-only to session-first with IP fallback
+  - Async function to get user identifier
+  - Prioritizes authenticated session ID over IP
+
+**API Updates**
+- ✅ `app/api/chat/route.ts`
+  - Access code check now skips for authenticated users
+  - Authenticated users can use unlimited API calls
+
+- ✅ `app/api/log-feedback/route.ts`
+  - Updated for async getUserIdFromRequest
+  - Maintains feedback logging for all users
+
+**UI Components**
+- ✅ `components/settings-dialog.tsx`
+  - Added user profile section in settings
+  - Logout button with session termination
+  - Display user email when authenticated
+  - Graceful fallback for anonymous users
+
+**Internationalization**
+- ✅ `lib/i18n/dictionaries/en.json`
+  - Added authentication keys (18 new entries)
+  - Login/register/password/email labels
+  - Error messages and button labels
+
+- ✅ `lib/i18n/dictionaries/ja.json`
+  - Japanese translations for authentication (18 entries)
+
+- ✅ `lib/i18n/dictionaries/zh.json`
+  - Simplified Chinese translations (18 entries)
+
+- ✅ `lib/i18n/dictionaries/zh-Hant.json`
+  - Traditional Chinese translations (18 entries)
+
+**Configuration**
+- ✅ `env.example`
+  - Added DATABASE_URL for PostgreSQL connection
+  - Added BETTER_AUTH_SECRET for session encryption
+  - Added BETTER_AUTH_URL for auth endpoint
+  - Added NEXT_PUBLIC_BETTER_AUTH_URL for client-side access
+  - Added BETTER_AUTH_TRUSTED_ORIGINS for CORS
+  - Added OAuth credentials (GOOGLE_CLIENT_ID/SECRET, GITHUB_CLIENT_ID/SECRET)
+
+- ✅ `package.json`
+  - Added dependencies:
+    - `better-auth@^1.x` - Authentication framework
+    - `drizzle-orm@^0.x` - ORM for database access
+    - `pg@^8.x` - PostgreSQL client
+    - `drizzle-kit@^0.x` - Migration tools
+    - `@types/pg@^8.x` - TypeScript definitions
+
+#### Technical Architecture
+
+```
+Browser
+  ↓
+Next.js App Router + Proxy (i18n + Auth)
+  ├── Route Protection: Session validation
+  ├── Redirect: Unauthenticated → /login
+  ├── Preserve: callbackUrl for post-login
+  └── Skip: Access code for authenticated users
+  ↓
+API Routes (/api/auth/[...all])
+  ↓
+Better Auth Server
+  ├── Email/Password Provider
+  └── OAuth Providers (Google, GitHub)
+  ↓
+Drizzle ORM
+  ↓
+PostgreSQL Database
+  ├── users table
+  ├── sessions table
+  ├── accounts table (OAuth)
+  └── verifications table
+```
+
+#### Design Decisions
+
+1. **Opt-In Architecture**: Authentication is completely disabled when DATABASE_URL is not set
+   - Rationale: Local development works out-of-the-box without database setup
+   - Trade-off: Requires explicit database URL for authentication features
+
+2. **Proxy.ts Integration**: Authentication merged into i18n middleware instead of separate middleware.ts
+   - Rationale: Next.js 16 only allows one proxy.ts file
+   - Trade-off: Tighter coupling between i18n and auth
+
+3. **Session Cookie Validation**: Check happens at proxy layer (before route handlers)
+   - Rationale: Early validation prevents unauthorized access to protected pages
+   - Trade-off: Session lookup on every request (mitigated by caching)
+
+4. **Access Code Fallback**: Preserved for non-authenticated deployments
+   - Rationale: Allows deployments without DATABASE_URL to use access codes
+   - Trade-off: Two authentication paths increase complexity
+
+5. **Conditional OAuth**: Providers only enabled if credentials provided
+   - Rationale: Reduces required environment variables for basic deployments
+   - Trade-off: OAuth features quietly disabled without clear user feedback
+
+#### Security Considerations
+
+- **Session Management**: Better Auth handles secure session creation and validation
+- **Password Hashing**: Passwords hashed using industry-standard algorithms
+- **CORS**: BETTER_AUTH_TRUSTED_ORIGINS restricts OAuth callback origins
+- **Cookie Security**: Secure, HttpOnly, SameSite cookies for session tokens
+- **Email Verification**: Verification tokens stored in database with TTL
+- **OAuth**: Uses industry-standard OAuth 2.0 with PKCE support
+
+#### Verification
+
+- ✅ TypeScript compilation: 0 errors
+- ✅ Biome linting: 0 errors
+- ✅ Test suite: 66/66 tests passing
+- ✅ Build output: "Compiled successfully"
+- ✅ Static pages generated: All routes accessible
+
+#### Files Created
+- lib/auth.ts
+- lib/auth-client.ts
+- lib/db/index.ts
+- lib/db/schema.ts
+- drizzle.config.ts
+- app/api/auth/[...all]/route.ts
+- app/[lang]/(auth)/layout.tsx
+- app/[lang]/(auth)/login/page.tsx
+- app/[lang]/(auth)/register/page.tsx
+- components/auth/oauth-buttons.tsx
+
+#### Files Modified
+- proxy.ts (merged auth route protection)
+- lib/user-id.ts (session-first with IP fallback)
+- app/api/chat/route.ts (skip access code for authenticated users)
+- app/api/log-feedback/route.ts (async user ID retrieval)
+- components/settings-dialog.tsx (user profile section)
+- lib/i18n/dictionaries/*.json (18 keys × 4 languages)
+- env.example (new variables)
+- package.json (new dependencies)
+
+#### Files Deleted
+- middleware.ts (merged into proxy.ts)
+
+---
+
 ## [1.0.3] - 2025-02-06
 
 ### Critical Bug Fixes - Server.js Location ✅ FIXED

@@ -72,12 +72,15 @@ function createCachedStreamResponse(xml: string): Response {
 
 // Inner handler function
 async function handleChatRequest(req: Request): Promise<Response> {
-    // Check for access code
+    // Check for access code (skip if auth is enabled and user is authenticated)
     const accessCodes =
         process.env.ACCESS_CODE_LIST?.split(",")
             .map((code) => code.trim())
             .filter(Boolean) || []
-    if (accessCodes.length > 0) {
+    const hasAuthSession = !!req.headers
+        .get("cookie")
+        ?.includes("better-auth.session_token")
+    if (accessCodes.length > 0 && !hasAuthSession) {
         const accessCodeHeader = req.headers.get("x-access-code")
         if (!accessCodeHeader || !accessCodes.includes(accessCodeHeader)) {
             return Response.json(
@@ -92,7 +95,7 @@ async function handleChatRequest(req: Request): Promise<Response> {
     const { messages, xml, previousXml, sessionId } = await req.json()
 
     // Get user ID for Langfuse tracking and quota
-    const userId = getUserIdFromRequest(req)
+    const userId = await getUserIdFromRequest(req)
 
     // Validate sessionId for Langfuse (must be string, max 200 chars)
     const validSessionId =

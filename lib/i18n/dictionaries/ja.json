@@ -292,6 +292,28 @@
         "improveWithSuggestions": "提案で改善",
         "regenerateWithFeedback": "検証フィードバックを使用してダイアグラムを再生成"
     },
+    "auth": {
+        "loginTitle": "おかえりなさい",
+        "loginDescription": "アカウントにサインインして続行",
+        "registerTitle": "アカウントを作成",
+        "registerDescription": "詳細を入力して開始",
+        "email": "メールアドレス",
+        "emailPlaceholder": "name@example.com",
+        "password": "パスワード",
+        "passwordPlaceholder": "パスワードを入力",
+        "name": "名前",
+        "namePlaceholder": "あなたの名前",
+        "login": "サインイン",
+        "register": "サインアップ",
+        "logout": "サインアウト",
+        "orContinueWith": "または以下で続行",
+        "noAccount": "アカウントをお持ちでないですか？",
+        "hasAccount": "すでにアカウントをお持ちですか？",
+        "loginFailed": "メールアドレスまたはパスワードが無効です",
+        "registerFailed": "登録に失敗しました。もう一度お試しください。",
+        "profile": "プロフィール",
+        "signedInAs": "ログイン中："
+    },
     "modelConfig": {
         "title": "AIモデル設定",
         "description": "複数のAIプロバイダーとモデルを設定",

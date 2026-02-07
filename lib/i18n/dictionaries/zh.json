@@ -292,6 +292,28 @@
         "improveWithSuggestions": "根据建议改进",
         "regenerateWithFeedback": "使用验证反馈重新生成图表"
     },
+    "auth": {
+        "loginTitle": "欢迎回来",
+        "loginDescription": "登录您的账户以继续",
+        "registerTitle": "创建账户",
+        "registerDescription": "输入您的信息以开始使用",
+        "email": "邮箱",
+        "emailPlaceholder": "name@example.com",
+        "password": "密码",
+        "passwordPlaceholder": "输入您的密码",
+        "name": "姓名",
+        "namePlaceholder": "您的姓名",
+        "login": "登录",
+        "register": "注册",
+        "logout": "退出登录",
+        "orContinueWith": "或通过以下方式继续",
+        "noAccount": "还没有账户？",
+        "hasAccount": "已有账户？",
+        "loginFailed": "邮箱或密码无效",
+        "registerFailed": "注册失败，请重试。",
+        "profile": "个人资料",
+        "signedInAs": "已登录："
+    },
     "modelConfig": {
         "title": "AI 模型配置",
         "description": "配置多个 AI 提供商和模型",

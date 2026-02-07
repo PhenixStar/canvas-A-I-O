@@ -1,9 +1,19 @@
-/**
- * Generate a userId from request for tracking purposes.
- * Uses base64url encoding of IP for URL-safe identifier.
- * Note: base64 is reversible - this is NOT privacy protection.
- */
-export function getUserIdFromRequest(req: Request): string {
+import { auth } from "@/lib/auth"
+
+export async function getUserIdFromRequest(req: Request): Promise<string> {
+    if (process.env.DATABASE_URL) {
+        try {
+            const session = await auth.api.getSession({
+                headers: req.headers,
+            })
+            if (session?.user?.id) {
+                return session.user.id
+            }
+        } catch {
+            // Fall through to IP-based ID
+        }
+    }
+
     const forwardedFor = req.headers.get("x-forwarded-for")
     const rawIp = forwardedFor?.split(",")[0]?.trim() || "anonymous"
     return rawIp === "anonymous"

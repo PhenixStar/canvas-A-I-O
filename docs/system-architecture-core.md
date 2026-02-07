@@ -801,3 +801,350 @@ sequenceDiagram
     A->>FS: Create backup
     A->>C: Session saved
 ```
+
+---
+
+## Authentication Architecture (Phase 4 Sprint 1)
+
+### Overview
+
+AIO Canvas implements enterprise-grade authentication using Better Auth framework with Drizzle ORM and PostgreSQL. The system supports email/password authentication and OAuth 2.0 providers (Google, GitHub) with optional/conditional enablement.
+
+### Authentication Design Principles
+
+1. **Opt-In Architecture**: Zero database configuration required for basic usage
+   - Without DATABASE_URL: Authentication disabled, access code system active
+   - With DATABASE_URL: Full authentication enabled
+
+2. **Session-First Approach**: Authenticated users get priority
+   - Route protection checks session validity first
+   - Falls back to access code for unauthenticated requests
+   - User ID prioritizes authenticated session over IP address
+
+3. **Secure by Default**: All sensitive operations use encryption
+   - Passwords hashed using bcrypt
+   - Session cookies are secure, HttpOnly, SameSite
+   - Email verification tokens with TTL
+   - OAuth tokens stored securely
+
+### Authentication Layers
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        WEB[Web Application<br/>React + Next.js]
+        AUTH_UI[Auth Pages<br/>Login/Register]
+    end
+
+    subgraph "Middleware Layer"
+        PROXY[Proxy.ts<br/>i18n + Auth Check]
+        PROTECT[Route Protection<br/>Session Validation]
+    end
+
+    subgraph "API Layer"
+        AUTHAPI[Better Auth API<br/>/api/auth/[...all]]
+        PROVIDERS[Auth Providers<br/>Email, OAuth]
+    end
+
+    subgraph "Data Layer"
+        ORM[Drizzle ORM<br/>PostgreSQL Client]
+        DB[(PostgreSQL<br/>Database)]
+    end
+
+    WEB --> AUTH_UI
+    AUTH_UI --> AUTHAPI
+
+    WEB --> PROXY
+    PROXY --> PROTECT
+    PROTECT --> AUTHAPI
+
+    AUTHAPI --> PROVIDERS
+    PROVIDERS --> ORM
+    ORM --> DB
+```
+
+### Database Schema (Drizzle ORM)
+
+```typescript
+// User table - stores user account information
+CREATE TABLE users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    emailVerified BOOLEAN DEFAULT false,
+    name TEXT,
+    image TEXT,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+// Session table - manages active user sessions
+CREATE TABLE sessions (
+    id TEXT PRIMARY KEY,
+    expiresAt TIMESTAMP NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ipAddress TEXT,
+    userAgent TEXT,
+    userId TEXT NOT NULL REFERENCES users(id)
+);
+
+// Account table - links OAuth providers to users
+CREATE TABLE accounts (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL REFERENCES users(id),
+    accountId TEXT NOT NULL,
+    providerId TEXT NOT NULL,  -- 'google', 'github', etc.
+    refreshToken TEXT,
+    accessToken TEXT,
+    expiresAt TIMESTAMP,
+    password TEXT,  -- For email/password provider
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+// Verification table - email verification tokens
+CREATE TABLE verifications (
+    id TEXT PRIMARY KEY,
+    identifier TEXT NOT NULL,
+    value TEXT NOT NULL,
+    expiresAt TIMESTAMP NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Authentication Flow
+
+#### Email/Password Registration
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Register Page
+    participant API as /api/auth/signup
+    participant AUTH as Better Auth
+    participant DB as PostgreSQL
+
+    U->>UI: Enter email & password
+    UI->>API: POST signup request
+    API->>AUTH: Create user & account
+    AUTH->>DB: Insert user record
+    AUTH->>DB: Insert account (email provider)
+    AUTH->>DB: Hash password (bcrypt)
+    AUTH->>DB: Create verification token
+    API->>UI: Success + redirect to login
+    UI->>U: Show login page
+    U->>U: Verify email via link
+```
+
+#### Email/Password Login
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Login Page
+    participant API as /api/auth/signin
+    participant AUTH as Better Auth
+    participant DB as PostgreSQL
+
+    U->>UI: Enter email & password
+    UI->>API: POST signin request
+    API->>AUTH: Validate credentials
+    AUTH->>DB: Look up user by email
+    AUTH->>DB: Compare password hash
+    AUTH->>DB: Create session
+    AUTH->>API: Return session token
+    API->>UI: Set secure cookie
+    UI->>U: Redirect to dashboard
+```
+
+#### OAuth Flow (Google/GitHub)
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Login Page
+    participant API as /api/auth/callback/google
+    participant GOOGLE as Google OAuth Server
+    participant AUTH as Better Auth
+    participant DB as PostgreSQL
+
+    U->>UI: Click "Sign in with Google"
+    UI->>GOOGLE: Redirect with client_id
+    GOOGLE->>U: Show Google login
+    U->>GOOGLE: Authenticate
+    GOOGLE->>API: Redirect with auth code
+    API->>GOOGLE: Exchange code for token
+    GOOGLE->>API: Return access token
+    API->>AUTH: Create/link user
+    AUTH->>DB: Look up user by email
+    AUTH->>DB: Create account if new user
+    AUTH->>DB: Create session
+    API->>UI: Set secure cookie
+    UI->>U: Redirect to dashboard
+```
+
+### Route Protection Architecture
+
+The authentication check happens in `proxy.ts` (merged with i18n middleware):
+
+```typescript
+export async function middleware(request: NextRequest) {
+    const path = request.nextUrl.pathname;
+    const locale = extractLocale(path);  // i18n logic
+
+    // Check if path requires authentication
+    const isAuthPath = isProtectedRoute(path);
+
+    if (isAuthPath) {
+        // Get session from cookie
+        const session = await getSessionFromCookie(request);
+
+        if (!session) {
+            // Not authenticated - redirect to login with callbackUrl
+            return redirectToLogin(locale, path);
+        }
+    }
+
+    return handleI18nRouting(request, locale);
+}
+```
+
+**Protected Routes**:
+- `/[lang]/dashboard/*` - Main application
+- `/[lang]/diagrams/*` - Diagram management
+- `/[lang]/settings/*` - User settings
+
+**Public Routes**:
+- `/[lang]/login` - Login page
+- `/[lang]/register` - Registration page
+- `/api/auth/*` - Authentication endpoints
+- All root-level routes (homepage, docs, etc.)
+
+### Session Management
+
+```typescript
+// Client-side session hook
+const { data: session } = useSession();
+
+if (session) {
+    // User is authenticated
+    const userId = session.user.id;
+    const email = session.user.email;
+    const name = session.user.name;
+}
+
+// Session automatically refreshed on page load
+// Expires based on server-side configuration
+// Logout clears session and redirects to login
+```
+
+### User Identification System
+
+The system prioritizes authenticated users while supporting anonymous access:
+
+```typescript
+// lib/user-id.ts - Multi-layered approach
+async function getUserIdFromRequest(req: Request): Promise<string> {
+    // 1. Try to get authenticated user ID from session
+    const session = await auth.api.getSession({ headers: req.headers });
+    if (session?.user?.id) {
+        return session.user.id;  // Priority: authenticated session
+    }
+
+    // 2. Fallback to IP-based identification for anonymous users
+    const ip = getClientIp(req);
+    return `anon-${hashIp(ip)}`;  // Fallback: IP-based
+}
+```
+
+### Access Code System (Fallback)
+
+When DATABASE_URL is not configured, the system falls back to access codes:
+
+```typescript
+// app/api/chat/route.ts
+async function handleChatRequest(req: Request) {
+    const userId = await getUserIdFromRequest(req);
+
+    // For authenticated users: skip access code check
+    if (userId.startsWith('user-')) {
+        // Proceed with request
+        return processChat(req);
+    }
+
+    // For anonymous users: require access code
+    const accessCode = req.headers.get('x-access-code');
+    if (!validateAccessCode(accessCode)) {
+        return new Response('Invalid or missing access code', { status: 401 });
+    }
+
+    return processChat(req);
+}
+```
+
+### Security Considerations
+
+#### Password Security
+- Minimum 8 characters (enforced by Better Auth)
+- Bcrypt hashing with salt rounds
+- Password never transmitted in plain text (HTTPS only)
+- Reset flow uses time-limited verification tokens
+
+#### Session Security
+- Secure cookies: HttpOnly, SameSite=Lax
+- CSRF tokens for form submissions
+- Session expires after 30 days (configurable)
+- IP address logged for security audits
+
+#### OAuth Security
+- Uses OAuth 2.0 with PKCE support
+- CORS restricted to BETTER_AUTH_TRUSTED_ORIGINS
+- Redirect URLs validated against whitelist
+- State parameter validates requests
+
+#### Database Security
+- Passwords hashed before storage
+- Sensitive tokens encrypted
+- SQL injection prevented via Drizzle ORM
+- Indexes on frequently-queried columns
+
+### Configuration
+
+Environment variables for authentication:
+
+```bash
+# Required for authentication
+DATABASE_URL=postgresql://user:password@localhost:5432/canvas_db
+
+# Session encryption
+BETTER_AUTH_SECRET=your-secret-key-min-32-chars
+
+# OAuth callback URLs
+BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
+
+# CORS configuration
+BETTER_AUTH_TRUSTED_ORIGINS=http://localhost:3000,https://yourdomain.com
+
+# OAuth providers (optional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-secret
+GITHUB_CLIENT_ID=your-github-app-id
+GITHUB_CLIENT_SECRET=your-github-secret
+```
+
+### Performance Considerations
+
+- **Session Lookup**: Single database query per request (cached)
+- **Token Validation**: Fast cryptographic validation
+- **OAuth**: Minimal latency for token exchange
+- **Scaling**: Horizontal scaling via PostgreSQL connection pooling
+
+### Future Enhancements
+
+- Two-factor authentication (TOTP/SMS)
+- SSO integration (SAML, OpenID Connect)
+- Social login expansion (Microsoft, Apple, Discord)
+- Advanced permission model (RBAC with workspace scoping)
+- Audit logging for compliance
+- Device management and session control
+- Passwordless authentication (magic links, WebAuthn)
