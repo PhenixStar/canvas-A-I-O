@@ -243,10 +243,34 @@ To become the leading AI-powered diagramming platform that seamlessly integrates
 - ✅ Build successful
 **Notes**: Authentication is opt-in (zero-config when DATABASE_URL not set). Merged into proxy.ts for Next.js 16 compatibility.
 
-**Sprint 2: RBAC & Permissions** (Weeks 4-5) 📅 PLANNED
-- Role definitions (Owner, Admin, Editor, Viewer)
-- Permission system (diagram:create, diagram:edit, etc.)
-- Workspace-level and diagram-level permissions
+**Sprint 2: RBAC & Permissions** (Weeks 4-5) ✅ COMPLETED
+**Date Completed**: 2026-02-09
+**Implementation**: Better Auth admin plugin with createAccessControl
+**Features**:
+- 4 roles: owner > admin > editor (default) > viewer
+- 3 resources: diagram (create/edit/view/delete/share), user (manage/list/ban), settings (read/write)
+- Server-side requirePermission() with PermissionError (401/403)
+- Client-side usePermissions() hook deriving boolean flags from session role
+- Admin panel (/[lang]/admin) with user list, role assignment, ban/unban
+- Owner bootstrap via ADMIN_EMAIL env var on first signup
+- Role badge and admin link in settings dialog for owner/admin
+- Permission check on chat API route (diagram:create)
+- i18n keys for admin section in en/zh/ja/zh-Hant
+- 13 unit tests covering role hierarchy and permission derivation
+**Key Files**:
+- `lib/permissions.ts` - Server-side permission wrapper
+- `hooks/use-permissions.ts` - Client-side permission hook
+- `app/[lang]/(auth)/admin/page.tsx` - Admin panel page
+- `app/[lang]/(auth)/admin/layout.tsx` - Role guard layout
+- `components/admin/user-management.tsx` - User list with role/ban controls
+- `lib/auth.ts` - Admin plugin with access control
+- `lib/db/schema.ts` - role, banned, banReason, banExpires columns
+**Status Metrics**:
+- ✅ Zero TypeScript errors
+- ✅ Zero linting errors
+- ✅ 79/79 tests passing (66 existing + 13 new)
+- ✅ Build successful
+**Notes**: Schema push to PostgreSQL pending (requires DB setup). Role-based permissions (not per-resource ACLs) — diagram-level ACLs deferred to Sprint 3.
 
 **Sprint 3: Real-time Collaboration** (Weeks 6-9)
 - Yjs CRDT integration for conflict-free sync
@@ -477,6 +501,21 @@ Q1-Q4: Phase 5 Completion
 
 ## Recent Updates & Progress
 
+### 2026-02-09 - Phase 4 Sprint 2: RBAC & Permissions ✅ COMPLETED
+- ✅ **Better Auth Admin Plugin**: Native role field with createAccessControl for 4 roles (owner > admin > editor > viewer)
+- ✅ **Permission System**: Server-side requirePermission() + client-side usePermissions() hook
+- ✅ **Admin Panel**: /admin route with role guard, user management (list/role assignment/ban-unban)
+- ✅ **Owner Bootstrap**: ADMIN_EMAIL env var for first user auto-promotion
+- ✅ **Settings Integration**: Role badge display + admin panel link for owner/admin
+- ✅ **Permission Enforcement**: Chat API checks diagram:create for authenticated users
+- ✅ **i18n Support**: 25 admin keys in 4 languages (en/zh/ja/zh-Hant)
+- ✅ **Testing**: 13 new unit tests for role hierarchy and permission derivation
+- ✅ **Documentation**: system-architecture.md created with RBAC section
+
+**Files Created**: 7 new files (permissions.ts, use-permissions.ts, admin routes, user-management.tsx, tests, .env.example)
+**Files Modified**: 10 files (auth.ts, auth-client.ts, schema.ts, user-id.ts, chat route, settings-dialog.tsx, 4 i18n files)
+**Commits**: e860107 (feat: RBAC), 4c3e4b3 (docs: changelog + architecture)
+
 ### 2025-02-07 - Phase 4 Sprint 1: Authentication System Implementation ✅ COMPLETED
 - ✅ **Better Auth Integration**: Email/password + OAuth (Google, GitHub) with conditional enablement
 - ✅ **Database Setup**: Drizzle ORM with PostgreSQL, user/session/account/verification tables
@@ -554,7 +593,7 @@ Q1-Q4: Phase 5 Completion
 
 ### 2025-Q2 Goals (Phase 4 Implementation)
 - [x] Begin enterprise features implementation (Sprint 1: Authentication - COMPLETED)
-- [ ] User management and permissions (Sprint 2: RBAC - IN PROGRESS)
+- [x] User management and permissions (Sprint 2: RBAC - COMPLETED)
 - [ ] Advanced collaboration features (Sprint 3: Real-time sync - PLANNED)
 - [ ] Admin dashboard development (Sprint 4: Workspaces - PLANNED)
 - [ ] Enhanced security features (Sprint 5: Encryption, audit - PLANNED)
@@ -595,4 +634,4 @@ Q1-Q4: Phase 5 Completion
 
 ---
 
-*This roadmap is a living document that will be updated based on progress, feedback, and changing market conditions. Last updated: 2025-02-06*
+*This roadmap is a living document that will be updated based on progress, feedback, and changing market conditions. Last updated: 2026-02-09*
