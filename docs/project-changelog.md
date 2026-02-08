@@ -4,6 +4,211 @@ This document records all significant changes, features, and fixes in AIO Canvas
 
 ---
 
+## [1.2.0] - 2026-02-08
+
+### Phase 4 Sprint 2: RBAC & Permissions System Implementation ✅ COMPLETED
+
+#### Features Added
+
+**Role-Based Access Control (RBAC) Core** (Better Auth Admin Plugin)
+- ✅ `lib/permissions.ts` (59 LOC)
+  - `AppRole` type definition: owner > admin > editor > viewer
+  - `PermissionError` exception class with 401/403 status codes
+  - `requirePermission()` server-side permission enforcement
+  - `getUserRole()` helper to extract user role from session
+  - 3 resources with granular permissions: diagram, user, settings
+  - Permission derivation logic: resource actions mapped to roles
+
+- ✅ `hooks/use-permissions.ts` (30 LOC)
+  - `usePermissions()` client-side hook
+  - Role flags: isOwner, isAdmin, isEditor, isViewer
+  - Permission booleans: canCreateDiagram, canEditDiagram, canDeleteDiagram, canShareDiagram, etc.
+  - Derived from session role via client-side computation
+  - Safe fallback for unauthenticated users
+
+**Admin Panel Implementation**
+- ✅ `app/[lang]/(auth)/admin/page.tsx` (12 LOC)
+  - Admin dashboard landing page
+  - Redirects non-admin users via layout.tsx guard
+  - Placeholder for future admin features
+
+- ✅ `app/[lang]/(auth)/admin/layout.tsx` (23 LOC)
+  - Server-side role verification guard
+  - Redirects non-admin/non-owner to home
+  - Wraps all `/admin` routes with protection
+
+- ✅ `components/admin/user-management.tsx` (186 LOC)
+  - User list with pagination
+  - Role dropdown (owner/admin/editor/viewer)
+  - Ban/unban functionality with expiration
+  - Real-time role and status updates
+  - Search/filter by user email
+  - Toast notifications for actions
+
+**Testing Suite**
+- ✅ `tests/unit/permissions.test.ts` (214 LOC)
+  - 13 comprehensive tests covering:
+    - Role hierarchy validation (owner > admin > editor > viewer)
+    - Permission derivation (role → permissions mapping)
+    - PermissionError exception handling (401/403 codes)
+    - Edge cases (banned users, missing roles)
+    - All resource permissions (diagram, user, settings)
+
+**Database Schema Extensions** (lib/db/schema.ts)
+- ✅ User table columns added:
+  - `role: text` - AppRole assignment
+  - `banned: boolean` - Ban status flag
+  - `banReason: text` - Reason for ban
+  - `banExpires: timestamp` - Automatic unban after expiration
+  - `impersonatedBy: text` - Admin impersonation tracking
+- ✅ Session table columns added:
+  - `impersonatedBy: text` - Track impersonated sessions
+
+**Authentication Enhancement** (lib/auth.ts)
+- ✅ Better Auth admin plugin integration:
+  - `createAccessControl()` with 4 roles and 3 resources
+  - `databaseHooks.user.create.after()` for owner bootstrap
+  - Owner role assigned to first user matching ADMIN_EMAIL env var
+  - Plugin auto-protects `/admin` API routes
+
+- ✅ `lib/auth-client.ts`
+  - Added `adminClient` plugin import
+  - Client-side access to admin actions (future expansion)
+
+**User ID System Upgrade** (lib/user-id.ts)
+- ✅ `UserIdentity` interface: extends user session with role
+- ✅ `getUserIdentityFromRequest()` async helper
+  - Extracts role from session
+  - Returns user ID + role for permission checks
+
+**API Security Updates**
+- ✅ `app/api/chat/route.ts`
+  - Added `requirePermission('diagram', 'create')` check
+  - Authenticated users must have diagram creation permission
+  - Non-authenticated users rejected with PermissionError
+
+**UI Integration**
+- ✅ `components/settings-dialog.tsx`
+  - Added role badge display in user profile
+  - Admin panel link visible to admin/owner roles
+  - Graceful fallback for non-admin users
+
+**Internationalization** (4 languages)
+- ✅ `lib/i18n/dictionaries/en.json`
+  - 25 admin/RBAC keys: roles, permissions, user management, ban actions
+- ✅ `lib/i18n/dictionaries/zh.json` (Simplified Chinese)
+  - 25 keys for admin panel and RBAC labels
+- ✅ `lib/i18n/dictionaries/ja.json` (Japanese)
+  - 25 keys for admin/RBAC UI
+- ✅ `lib/i18n/dictionaries/zh-Hant.json` (Traditional Chinese)
+  - 25 keys for admin panel and RBAC
+
+**Configuration Updates**
+- ✅ `.env.example`
+  - Added `ADMIN_EMAIL` for initial owner role assignment
+  - All 25+ environment variables documented
+
+#### Technical Architecture
+
+```
+Session Flow
+  ↓
+Better Auth Admin Plugin
+  ├── Role Assignment (4 levels: owner > admin > editor > viewer)
+  ├── Owner Bootstrap (first signup matching ADMIN_EMAIL)
+  └── databaseHooks.user.create.after()
+  ↓
+requirePermission(resource, action) [Server]
+  ├── Extract role from session
+  ├── Check role has permission for resource:action
+  └── Throw PermissionError (401/403) if denied
+  ↓
+usePermissions() Hook [Client]
+  ├── Derive role from session
+  └── Compute boolean flags (canCreate, canEdit, etc.)
+  ↓
+Admin Routes Protection
+  ├── /admin/layout.tsx guards routes
+  ├── Redirects non-admin to home
+  └── User Management Panel accessible to admin/owner
+
+Resources & Permissions
+  ├── diagram: create, edit, view, delete, share
+  ├── user: manage (ban/unban/role), list, view
+  └── settings: read, write (app configuration)
+```
+
+#### Design Decisions
+
+1. **Better Auth Admin Plugin over Custom RBAC Tables**
+   - Rationale: Minimal code, native role/session integration, auto-protected admin API
+   - Trade-off: Less flexible per-resource ACLs (addressed in Sprint 3)
+
+2. **Role-Based Permissions (not per-resource ACLs)**
+   - Rationale: Simpler permission model for Phase 4 launch
+   - Deferred: Diagram-level ACLs (sharing specific diagrams) → Sprint 3
+
+3. **Default Role: Editor**
+   - Rationale: Tool encourages creation; users should create diagrams by default
+   - Alternative considered: viewer (safer but less empowering)
+
+4. **Owner Bootstrap via ADMIN_EMAIL**
+   - Rationale: Single admin setup without database queries
+   - Process: First signup matching ADMIN_EMAIL → owner role assigned
+   - Fallback: If no ADMIN_EMAIL, first user defaults to editor
+
+5. **Client-Side Permission Checks for UX Only**
+   - Rationale: Hide disabled UI to improve UX
+   - Server Enforcement: All permissions checked server-side
+   - Security: Never trust client-side checks; always validate on server
+
+6. **databaseHooks.user.create.after for Owner Assignment**
+   - Rationale: Runs after user creation in database
+   - Alternative considered: middleware (too early, no ID yet)
+   - Clean integration: No custom user service needed
+
+#### Security Considerations
+
+- **Session Integration**: Roles embedded in Better Auth sessions (secure cookie)
+- **Server-Side Enforcement**: All permission checks on server; client checks UX-only
+- **Role Hierarchy**: owner > admin > editor > viewer prevents privilege escalation
+- **Ban Management**: Automatic expiration support for temporary bans
+- **Impersonation Tracking**: Admin impersonation logged in session (future audit log)
+- **API Protection**: /admin routes guarded at layout level (redirects to login if needed)
+
+#### Verification
+
+- ✅ TypeScript compilation: 0 errors
+- ✅ Biome linting: 0 errors
+- ✅ Test suite: 79/79 tests passing (66 existing + 13 new RBAC tests)
+- ✅ Build: succeeds without warnings
+
+#### Files Created
+- lib/permissions.ts
+- hooks/use-permissions.ts
+- app/[lang]/(auth)/admin/page.tsx
+- app/[lang]/(auth)/admin/layout.tsx
+- components/admin/user-management.tsx
+- tests/unit/permissions.test.ts
+- .env.example (updated)
+
+#### Files Modified
+- lib/auth.ts (admin plugin + owner bootstrap)
+- lib/auth-client.ts (adminClient plugin)
+- lib/db/schema.ts (role/ban/impersonation columns)
+- lib/user-id.ts (UserIdentity interface + getUserIdentityFromRequest)
+- app/api/chat/route.ts (requirePermission check)
+- components/settings-dialog.tsx (role badge + admin link)
+- lib/i18n/dictionaries/*.json (25 keys × 4 languages)
+
+#### Pending
+
+- **PostgreSQL Schema Push**: Blocked on VPS/database availability
+- **Diagram-Level ACLs** (Sprint 3): Sharing specific diagrams with other users
+- **Audit Logging**: Track admin actions (bans, role changes, impersonation)
+
+---
+
 ## [1.1.0] - 2025-02-07
 
 ### Phase 4 Sprint 1: Authentication System Implementation ✅ COMPLETED
@@ -661,10 +866,12 @@ asarUnpack:
 
 | Version | Date | Phase | Status |
 |---------|------|-------|--------|
+| 1.2.0 | 2026-02-08 | Phase 4 Sprint 2 | ✅ Complete |
+| 1.1.0 | 2025-02-07 | Phase 4 Sprint 1 | ✅ Complete |
 | 1.0.0 | 2025-02-06 | Phase 3 | ✅ Complete |
 | 0.9.0 | 2024-Q4 | Phase 2 | ✅ Complete |
 | 0.5.0 | 2024-Q2 | Phase 1 | ✅ Complete |
 
 ---
 
-*Last updated: 2025-02-06*
+*Last updated: 2026-02-08*
