@@ -380,5 +380,30 @@
         "allModelsShown": "All models are shown (including unvalidated)",
         "unvalidatedModelWarning": "This model has not been validated",
         "serverDefaultModel": "Server default model"
+    },
+    "admin": {
+        "panel": "Admin Panel",
+        "panelDescription": "Manage users, roles, and permissions",
+        "title": "User Management",
+        "description": "View and manage all registered users",
+        "searchPlaceholder": "Search users...",
+        "role": "Role",
+        "roles": {
+            "owner": "Owner",
+            "admin": "Admin",
+            "editor": "Editor",
+            "viewer": "Viewer"
+        },
+        "actions": "Actions",
+        "setRole": "Set Role",
+        "banUser": "Ban User",
+        "unbanUser": "Unban User",
+        "removeUser": "Remove User",
+        "noUsers": "No users found",
+        "roleChanged": "Role updated successfully",
+        "userBanned": "User banned successfully",
+        "userUnbanned": "User unbanned successfully",
+        "accessDenied": "Access Denied",
+        "insufficientPermissions": "You don't have permission to access this page"
     }
 }

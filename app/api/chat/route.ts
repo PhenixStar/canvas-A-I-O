@@ -34,6 +34,7 @@ import {
     setTraceOutput,
     wrapWithObserve,
 } from "@/lib/langfuse"
+import { PermissionError, requirePermission } from "@/lib/permissions"
 import { findServerModelById } from "@/lib/server-model-config"
 import { getSystemPrompt } from "@/lib/system-prompts"
 import { getUserIdFromRequest } from "@/lib/user-id"
@@ -89,6 +90,20 @@ async function handleChatRequest(req: Request): Promise<Response> {
                 },
                 { status: 401 },
             )
+        }
+    }
+
+    // RBAC: Check diagram:create permission for authenticated users
+    if (process.env.DATABASE_URL && hasAuthSession) {
+        try {
+            await requirePermission(req, "diagram", ["create"])
+        } catch (error) {
+            if (error instanceof PermissionError) {
+                return Response.json(
+                    { error: error.message },
+                    { status: error.statusCode },
+                )
+            }
         }
     }
 

@@ -380,5 +380,30 @@
         "allModelsShown": "顯示所有模型（包括未驗證的）",
         "unvalidatedModelWarning": "此模型尚未驗證",
         "serverDefaultModel": "伺服器預設模型"
+    },
+    "admin": {
+        "panel": "管理面板",
+        "panelDescription": "管理使用者、角色和權限",
+        "title": "使用者管理",
+        "description": "檢視和管理所有註冊使用者",
+        "searchPlaceholder": "搜尋使用者...",
+        "role": "角色",
+        "roles": {
+            "owner": "擁有者",
+            "admin": "管理員",
+            "editor": "編輯者",
+            "viewer": "檢視者"
+        },
+        "actions": "操作",
+        "setRole": "設定角色",
+        "banUser": "封鎖使用者",
+        "unbanUser": "解除封鎖",
+        "removeUser": "移除使用者",
+        "noUsers": "未找到使用者",
+        "roleChanged": "角色更新成功",
+        "userBanned": "使用者已封鎖",
+        "userUnbanned": "使用者已解除封鎖",
+        "accessDenied": "拒絕存取",
+        "insufficientPermissions": "您沒有權限存取此頁面"
     }
 }

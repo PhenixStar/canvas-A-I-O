@@ -380,5 +380,30 @@
         "allModelsShown": "显示所有模型（包括未验证的）",
         "unvalidatedModelWarning": "此模型尚未验证",
         "serverDefaultModel": "服务器默认模型"
+    },
+    "admin": {
+        "panel": "管理面板",
+        "panelDescription": "管理用户、角色和权限",
+        "title": "用户管理",
+        "description": "查看和管理所有注册用户",
+        "searchPlaceholder": "搜索用户...",
+        "role": "角色",
+        "roles": {
+            "owner": "所有者",
+            "admin": "管理员",
+            "editor": "编辑者",
+            "viewer": "查看者"
+        },
+        "actions": "操作",
+        "setRole": "设置角色",
+        "banUser": "封禁用户",
+        "unbanUser": "解封用户",
+        "removeUser": "移除用户",
+        "noUsers": "未找到用户",
+        "roleChanged": "角色更新成功",
+        "userBanned": "用户已封禁",
+        "userUnbanned": "用户已解封",
+        "accessDenied": "拒绝访问",
+        "insufficientPermissions": "您没有权限访问此页面"
     }
 }

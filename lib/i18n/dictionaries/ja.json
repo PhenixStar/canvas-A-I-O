@@ -380,5 +380,30 @@
         "allModelsShown": "すべてのモデルを表示（未検証を含む）",
         "unvalidatedModelWarning": "このモデルは検証されていません",
         "serverDefaultModel": "サーバーデフォルトモデル"
+    },
+    "admin": {
+        "panel": "管理パネル",
+        "panelDescription": "ユーザー、ロール、権限の管理",
+        "title": "ユーザー管理",
+        "description": "登録済みユーザーの表示と管理",
+        "searchPlaceholder": "ユーザーを検索...",
+        "role": "ロール",
+        "roles": {
+            "owner": "オーナー",
+            "admin": "管理者",
+            "editor": "編集者",
+            "viewer": "閲覧者"
+        },
+        "actions": "操作",
+        "setRole": "ロールを設定",
+        "banUser": "ユーザーをBAN",
+        "unbanUser": "BANを解除",
+        "removeUser": "ユーザーを削除",
+        "noUsers": "ユーザーが見つかりません",
+        "roleChanged": "ロールが更新されました",
+        "userBanned": "ユーザーがBANされました",
+        "userUnbanned": "ユーザーのBANが解除されました",
+        "accessDenied": "アクセス拒否",
+        "insufficientPermissions": "このページにアクセスする権限がありません"
     }
 }
