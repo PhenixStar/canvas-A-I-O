@@ -1,4 +1,12 @@
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import {
+    bigserial,
+    boolean,
+    customType,
+    index,
+    pgTable,
+    text,
+    timestamp,
+} from "drizzle-orm/pg-core"
 
 export const user = pgTable("user", {
     id: text("id").primaryKey(),
@@ -54,3 +62,43 @@ export const verification = pgTable("verification", {
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
 })
+
+const bytea = customType<{
+    data: Buffer
+    driverData: Buffer
+}>({
+    dataType() {
+        return "bytea"
+    },
+})
+
+export const yjsDocument = pgTable("yjs_document", {
+    id: text("id").primaryKey(),
+    data: bytea("data").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+})
+
+export const yjsUpdateLog = pgTable(
+    "yjs_update_log",
+    {
+        id: bigserial("id", { mode: "number" }).primaryKey(),
+        documentId: text("document_id")
+            .notNull()
+            .references(() => yjsDocument.id, { onDelete: "cascade" }),
+        updateData: bytea("update_data").notNull(),
+        userId: text("user_id").references(() => user.id, {
+            onDelete: "set null",
+        }),
+        createdAt: timestamp("created_at", { withTimezone: true })
+            .notNull()
+            .defaultNow(),
+    },
+    (table) => ({
+        documentIdIdx: index("yjs_update_log_document_id_idx").on(
+            table.documentId,
+        ),
+        userIdIdx: index("yjs_update_log_user_id_idx").on(table.userId),
+    }),
+)

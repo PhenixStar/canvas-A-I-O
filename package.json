@@ -28,7 +28,12 @@
         "dist:linux": "npm run electron:build && npm run electron:prepare && npx electron-builder --config electron/electron-builder.yml --linux",
         "dist:all": "npm run electron:build && npm run electron:prepare && npx electron-builder --config electron/electron-builder.yml --mac --win --linux",
         "test": "vitest",
-        "test:e2e": "playwright test"
+        "test:e2e": "playwright test",
+        "collab:server": "npx tsx server/websocket-server.ts",
+        "collab:db:setup": "npx tsx scripts/setup-websocket-db.ts",
+        "collab:test": "bash scripts/test-websocket.sh",
+        "collab:load-test": "npx tsx scripts/load-test-websocket.ts",
+        "dev:collab": "concurrently -k \"npm run dev\" \"npm run collab:server\""
     },
     "dependencies": {
         "@ai-sdk/amazon-bedrock": "^4.0.1",
@@ -44,6 +49,8 @@
         "@aws-sdk/credential-providers": "^3.943.0",
         "@extractus/article-extractor": "^8.0.18",
         "@formatjs/intl-localematcher": "^0.7.2",
+        "@hocuspocus/server": "^2.15.3",
+        "@hocuspocus/transformer": "^2.15.3",
         "@langfuse/client": "^4.4.9",
         "@langfuse/otel": "^4.4.4",
         "@langfuse/tracing": "^4.4.9",
@@ -99,6 +106,9 @@
         "tailwindcss-animate": "^1.0.7",
         "turndown": "^7.2.0",
         "unpdf": "^1.4.0",
+        "y-indexeddb": "^9.0.12",
+        "y-websocket": "^2.1.0",
+        "yjs": "^13.6.20",
         "zod": "^4.1.12"
     },
     "optionalDependencies": {
