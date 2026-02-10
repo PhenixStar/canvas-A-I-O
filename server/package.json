@@ -1,0 +1,32 @@
+{
+    "name": "canvas-websocket-server",
+    "version": "1.0.0",
+    "description": "WebSocket collaboration server for AIO Canvas",
+    "main": "dist/websocket-server.js",
+    "scripts": {
+        "build": "tsc",
+        "start": "node dist/websocket-server.js",
+        "dev": "tsx websocket-server.ts",
+        "db:generate": "drizzle-kit generate",
+        "db:migrate": "tsx scripts/migrate.ts",
+        "db:push": "drizzle-kit push"
+    },
+    "dependencies": {
+        "@hocuspocus/server": "^2.15.3",
+        "@hocuspocus/transformer": "^2.15.3",
+        "better-auth": "^1.4.18",
+        "drizzle-orm": "^0.45.1",
+        "pg": "^8.18.0",
+        "yjs": "^13.6.20"
+    },
+    "devDependencies": {
+        "@types/node": "^24.0.0",
+        "@types/pg": "^8.16.0",
+        "drizzle-kit": "^0.31.8",
+        "tsx": "^4.19.0",
+        "typescript": "^5"
+    },
+    "engines": {
+        "node": ">=20.0.0"
+    }
+}

@@ -1,0 +1,26 @@
+Research multiplayer UX patterns for collaborative diagram editing. Analyze these specific aspects:
+
+1. Cursor presence: How to show other users' cursors, position tracking, smoothing
+2. User identification: Avatar, name labels, color coding per user
+3. Selection indicators: Showing what other users have selected, highlighting
+4. Conflict awareness: Visual feedback when editing same elements, subtle warnings
+5. Viewport following: Option to follow another user's viewport, permissions
+6. Performance: Rendering 10+ cursors without lag, optimization techniques
+
+Current context:
+- React 19 + Next.js 16 app
+- Diagram editor (draw.io-like canvas)
+- Target: 5+ concurrent users
+
+Examples to study:
+- Figma's multiplayer cursors
+- Miro/Mural collaboration
+- Google Docs presence
+- Excalidraw multiplayer
+
+Report format:
+- Recommended UX patterns with mockups
+- React component examples for cursors/presence
+- Performance optimization techniques
+- Accessibility considerations
+- Code libraries/components to use

@@ -1,0 +1,90 @@
+TASK: Add role badge + admin panel link to settings-dialog.tsx
+
+PROJECT: canvas-A-I-O (Next.js 16 + React 19 + Better Auth + Tailwind CSS 4)
+WORKING DIR: /mnt/c/Users/Kratos/canvas-A-I-O
+
+CONTEXT:
+We have an RBAC system with 4 roles: owner > admin > editor > viewer.
+The settings dialog already has a User Profile section showing email + sign out button.
+We need to add: (1) a role badge pill next to the profile info, (2) an admin panel link for admin/owner users.
+
+EXISTING FILES TO READ FIRST:
+1. components/settings-dialog.tsx - the main file to modify (638 lines)
+2. hooks/use-permissions.ts - client-side permission hook (already created)
+3. lib/i18n/dictionaries/en.json - has "admin" section with i18n keys
+
+KEY STRUCTURE in settings-dialog.tsx:
+- Line 126: `const { data: session } = authClient.useSession()`
+- Lines 300-323: User Profile SettingItem showing email + sign out button
+- Line 324+: API Keys section follows
+
+WHAT TO IMPLEMENT:
+
+1. Import `usePermissions` from "@/hooks/use-permissions" at the top
+2. Import `Shield` icon from "lucide-react" (add to existing import)
+3. Inside the SettingsContent component (after the session destructure), add:
+   `const { role, isAdmin } = usePermissions()`
+
+4. MODIFY the User Profile SettingItem (lines 300-323):
+   - Change the description to include the role badge
+   - After the description text showing the email, add a small role badge pill:
+     ```tsx
+     <span className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+       role === "owner" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
+       role === "admin" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" :
+       role === "editor" ? "bg-green-500/10 text-green-600 dark:text-green-400" :
+       "bg-gray-500/10 text-gray-600 dark:text-gray-400"
+     }`}>
+       {role.charAt(0).toUpperCase() + role.slice(1)}
+     </span>
+     ```
+   - The badge goes in the description area of SettingItem. Since SettingItem takes a string description,
+     you may need to change the User Profile section to put the badge BELOW the SettingItem or modify
+     the description to include it. The simplest approach: Add the badge as a separate element after the
+     SettingItem description text, inside the SettingItem's children or by making description accept ReactNode.
+
+   ACTUALLY, looking at the code more carefully:
+   - SettingItem renders description as a plain string in a <p> tag
+   - Simplest approach: DON'T modify SettingItem. Instead, after the existing User Profile SettingItem (line 322 close),
+     add a NEW element that shows the role badge and admin link INSIDE the same session?.user block.
+
+5. ADD an Admin Panel link after the User Profile SettingItem but still inside the `{session?.user && (...)}` block:
+   ```tsx
+   {isAdmin && (
+     <SettingItem
+       label={dict.admin?.panel || "Admin Panel"}
+       description={dict.admin?.panelDescription || "Manage users, roles, and permissions"}
+     >
+       <Button
+         variant="ghost"
+         size="sm"
+         className="h-9 w-9 p-0"
+         onClick={() => {
+           const segments = pathname.split("/").filter(Boolean)
+           const lang = segments[0] || "en"
+           router.push(`/${lang}/admin`)
+         }}
+       >
+         <ChevronRight className="h-4 w-4" />
+       </Button>
+     </SettingItem>
+   )}
+   ```
+
+6. For the role badge, the cleanest approach is to modify the User Profile SettingItem's description prop to include the role.
+   Change line 304 from:
+   ```
+   description={`${dict.auth.signedInAs} ${session.user.email}`}
+   ```
+   to:
+   ```
+   description={`${dict.auth.signedInAs} ${session.user.email} (${role.charAt(0).toUpperCase() + role.slice(1)})`}
+   ```
+   This is the SIMPLEST approach that doesn't require modifying SettingItem component.
+
+RULES:
+- Do NOT create new files, only modify settings-dialog.tsx
+- Keep changes minimal - only add what's described above
+- Use existing patterns (SettingItem, Button, etc.)
+- Run `npx tsc --noEmit` after changes to verify no type errors
+- Run `npx biome check --write components/settings-dialog.tsx` to auto-fix formatting

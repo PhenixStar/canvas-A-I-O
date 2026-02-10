@@ -1,0 +1,15 @@
+Research Yjs CRDT integration for draw.io XML documents. Analyze these specific aspects:
+
+1. XML/Text document handling: How Yjs handles structured XML documents (not just rich text)
+2. Conflict resolution: How conflicts are resolved for structured diagram data (nodes, edges, positions)
+3. Memory footprint: Memory usage for large diagrams with 1000+ nodes
+4. React 19 integration: Proven patterns for integrating Yjs with React 19 and Next.js
+5. Persistence strategies: PostgreSQL storage vs file-based storage for Yjs documents
+6. Performance: Real benchmarks from production projects, not marketing claims
+
+Report format:
+- Recommended integration approach with code examples
+- Specific risks and mitigation strategies
+- Performance characteristics (latency, memory, bandwidth)
+- Exact library versions to use
+- Alternative approaches if Yjs isn't suitable

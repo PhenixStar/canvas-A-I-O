@@ -1,0 +1,51 @@
+Implement Phase 1 of the Sprint 3 real-time collaboration PRD.
+
+CONTEXT:
+- Project: canvas-A-I-O (Next.js 16 diagramming app at draw.nulled.ai)
+- Current: Single-user diagram editing with draw.io XML
+- Goal: Add Yjs CRDT for multi-user real-time sync
+
+PHASE 1 TASKS (from PRD docs/prds/sprint3-realtime-collaboration.md):
+
+1. Install dependencies:
+   - yjs@^13.6.20
+   - y-indexeddb@^9.0.12
+   - y-websocket@^2.0.4
+
+2. Create lib/crdt.ts:
+   - Yjs document initialization
+   - WebsocketProvider setup (ws://localhost:3001 for dev)
+   - IndexeddbPersistence for offline support
+   - Export: getYjsDoc(roomId), getWsProvider(roomId)
+
+3. Create hooks/use-crdt-diagram.ts:
+   - React hook wrapping Yjs document
+   - Sync diagram XML with Yjs.XmlFragment
+   - Handle load/save to existing diagram state
+   - Return: document, provider, synced status
+
+4. Integrate with existing diagram editor:
+   - Find the component that manages diagram state (likely in components/)
+   - Replace local state with Yjs sync
+   - Ensure backward compatibility (single-user mode still works)
+
+5. Test locally:
+   - Run npm run dev
+   - Open two browser windows to same diagram
+   - Edit in one window → verify sync in other
+   - Run typecheck and fix any errors
+
+IMPORTANT:
+- Follow existing code patterns in the codebase
+- Use TypeScript strict mode
+- Add error handling for WebSocket failures
+- Don't break existing single-user functionality
+- Use kebab-case for file names
+
+WORKING DIR: /mnt/c/Users/Kratos/canvas-A-I-O
+
+After implementation, report:
+1. Files created/modified
+2. How to test (manual steps)
+3. Any issues encountered
+4. TypeScript errors (if any)

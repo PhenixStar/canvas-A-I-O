@@ -756,16 +756,86 @@ pm2 save
 pm2 startup
 ```
 
-#### Option B: Managed Service
+#### Option B: Railway Deployment (Recommended)
 
-Deploy to Railway/Render with PostgreSQL addon:
+Railway provides auto-scaling, managed PostgreSQL, and zero operational overhead.
 
-1. Create project from GitHub repo
-2. Add PostgreSQL service
-3. Set environment variables (DATABASE_URL, BETTER_AUTH_SECRET)
-4. Deploy — platform handles PM2 and scaling
+**Prerequisites:**
+- GitHub account with canvas-A-I-O repository
+- Railway account (free tier available: $5 credit/month)
 
-**Advantage:** Horizontal scaling, SSL, zeroOps.
+**Step 1: Deploy to Railway**
+
+```bash
+# 1. Install Railway CLI
+npm install -g @railway/cli
+
+# 2. Login to Railway
+railway login
+
+# 3. Initialize project in server directory
+cd canvas-A-I-O/server
+railway init
+
+# 4. Link to existing project or create new
+railway link
+
+# 5. Add PostgreSQL database
+railway add postgresql
+
+# 6. Set environment variables
+railway variables set BETTER_AUTH_SECRET=$(openssl rand -hex 32)
+railway variables set PORT=3001
+railway variables set NODE_ENV=production
+
+# 7. Deploy
+railway up
+```
+
+**Step 2: Run Database Migration**
+
+```bash
+# Get database URL from Railway
+railway variables get DATABASE_URL
+
+# Run migration manually (one-time setup)
+railway run npm run db:migrate
+
+# Or enable automatic migration on deploy in railway.json:
+# "deploy": { "startCommand": "npm run db:migrate && npm start" }
+```
+
+**Step 3: Verify Deployment**
+
+```bash
+# Check deployment status
+railway status
+
+# View logs
+railway logs
+
+# Get public URL
+railway domain
+
+# Test health endpoint
+curl https://your-project.railway.app/health
+```
+
+**Step 4: Configure Frontend Connection**
+
+Update main app `.env.production`:
+```env
+NEXT_PUBLIC_WEBSOCKET_URL=wss://your-project.railway.app
+```
+
+**Advantages:**
+- ✅ Auto-scaling (handles traffic spikes)
+- ✅ Managed PostgreSQL (automated backups)
+- ✅ SSL certificates (automatic HTTPS)
+- ✅ Zero operational overhead
+- ✅ GitHub integration (auto-deploy on push)
+
+**Cost:** Free tier covers ~500MB RAM, $5/month for 512MB-1GB instances
 
 ### Verification
 

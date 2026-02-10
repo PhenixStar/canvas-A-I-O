@@ -1,0 +1,44 @@
+Implement Phase 2 WebSocket Server for Sprint 3 real-time collaboration.
+
+CONTEXT:
+- Project: canvas-A-I-O at C:\Users\Kratos\canvas-A-I-O
+- Phase 1 CRDT client complete (lib/crdt.ts, hooks/use-crdt-diagram.ts)
+- Better Auth sessions working
+- VPS: sgp1-02 (209.38.58.83:2222)
+
+DECISIONS MADE:
+1. Storage: Binary BYTEA (PostgreSQL native)
+2. Room naming: diagram-{id}
+3. Health check port: 3002
+
+IMPLEMENTATION TASKS (from plan):
+1. Install dependencies: @hocuspocus/server, @hocuspocus/transformer
+2. Create server/websocket-server.ts:
+   - Hocuspocus server on port 3001
+   - Authenticate hook using Better Auth
+   - Database adapter for PostgreSQL persistence
+   - Debounce writes (5 seconds)
+3. Create server/auth-middleware.ts:
+   - Validate session token
+   - Check diagram:view permission
+4. Create server/DatabaseAdapter.ts:
+   - Store Yjs documents in yjs_document table
+   - Log updates in yjs_update_log table
+5. Create ecosystem.config.cjs:
+   - PM2 configuration for production
+6. Create nginx-websocket.conf:
+   - Reverse proxy for ws://
+7. Add migration for yjs_document/yjs_update_log tables
+
+IMPORTANT:
+- Follow existing code patterns
+- Use TypeScript strict mode
+- Handle errors gracefully
+- Add JSDoc comments
+- Don't break existing functionality
+
+After implementation, report:
+1. Files created
+2. Dependencies added
+3. How to test locally
+4. Deployment steps for VPS

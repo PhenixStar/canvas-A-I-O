@@ -1,12 +1,21 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
 import type React from "react"
-import { createContext, useContext, useEffect, useRef, useState } from "react"
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
+} from "react"
 import type { DrawIoEmbedRef } from "react-drawio"
 import { toast } from "sonner"
 import type { ExportFormat } from "@/components/save-dialog"
 import { useAPIKeys } from "@/hooks/use-api-keys"
 import { useAutoSave } from "@/hooks/use-auto-save"
+import { useCrdtDiagram } from "@/hooks/use-crdt-diagram"
 import { useDiagramHistory } from "@/hooks/use-diagram-history"
 import { useRecentFiles } from "@/hooks/use-recent-files"
 import { getApiEndpoint } from "@/lib/base-path"
@@ -22,6 +31,7 @@ interface DiagramContextType {
     diagramHistory: { svg: string; xml: string }[]
     setDiagramHistory: (history: { svg: string; xml: string }[]) => void
     loadDiagram: (chart: string, skipValidation?: boolean) => string | null
+    handleDiagramAutoSave: (xml: string) => void
     handleExport: () => void
     handleExportWithoutHistory: () => void
     resolverRef: React.Ref<((value: string) => void) | null>
@@ -72,6 +82,7 @@ interface DiagramContextType {
 const DiagramContext = createContext<DiagramContextType | undefined>(undefined)
 
 export function DiagramProvider({ children }: { children: React.ReactNode }) {
+    const searchParams = useSearchParams()
     const [chartXML, setChartXML] = useState<string>("")
     const [latestSvg, setLatestSvg] = useState<string>("")
     const [diagramHistory, setDiagramHistory] = useState<
@@ -84,6 +95,26 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
     const [currentDiagramId, setCurrentDiagramId] = useState<string | null>(
         null,
     )
+
+    const hasCalledOnLoadRef = useRef(false)
+    const drawioRef = useRef<DrawIoEmbedRef | null>(null)
+    const resolverRef = useRef<((value: string) => void) | null>(null)
+    // Resolver for PNG export (used for VLM validation)
+    const pngResolverRef = useRef<((value: string) => void) | null>(null)
+    // Track if we're expecting an export for history (user-initiated)
+    const expectHistoryExportRef = useRef<boolean>(false)
+    // Track if diagram has been restored after DrawIO remount (e.g., theme change)
+    const hasDiagramRestoredRef = useRef<boolean>(false)
+    // Track latest chartXML for restoration after remount and collaboration checks
+    const chartXMLRef = useRef<string>("")
+    // Track history version number
+    const currentVersionRef = useRef<number>(0)
+
+    const roomFromQuery = searchParams.get("room")?.trim() || ""
+    const roomFromEnv = process.env.NEXT_PUBLIC_COLLAB_ROOM_ID?.trim() || ""
+    const collaborationRoomId = roomFromQuery || roomFromEnv
+
+    const collaborationEnabled = collaborationRoomId.length > 0
 
     // Initialize persistence hooks
     // Auto-save: only enable when we have a diagram ID and real diagram content
@@ -103,20 +134,6 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
     // API keys: load and make available to chat context
     const apiKeys = useAPIKeys()
 
-    const hasCalledOnLoadRef = useRef(false)
-    const drawioRef = useRef<DrawIoEmbedRef | null>(null)
-    const resolverRef = useRef<((value: string) => void) | null>(null)
-    // Resolver for PNG export (used for VLM validation)
-    const pngResolverRef = useRef<((value: string) => void) | null>(null)
-    // Track if we're expecting an export for history (user-initiated)
-    const expectHistoryExportRef = useRef<boolean>(false)
-    // Track if diagram has been restored after DrawIO remount (e.g., theme change)
-    const hasDiagramRestoredRef = useRef<boolean>(false)
-    // Track latest chartXML for restoration after remount
-    const chartXMLRef = useRef<string>("")
-    // Track history version number
-    const currentVersionRef = useRef<number>(0)
-
     const onDrawioLoad = () => {
         // Only set ready state once to prevent infinite loops
         if (hasCalledOnLoadRef.current) return
@@ -133,6 +150,71 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         chartXMLRef.current = chartXML
     }, [chartXML])
+
+    const loadDiagram = useCallback(
+        (chart: string, skipValidation?: boolean): string | null => {
+            let xmlToLoad = chart
+
+            // Validate XML structure before loading (unless skipped for internal use)
+            if (!skipValidation) {
+                const validation = validateAndFixXml(chart)
+                if (!validation.valid) {
+                    console.warn(
+                        "[loadDiagram] Validation error:",
+                        validation.error,
+                    )
+                    return validation.error
+                }
+                // Use fixed XML if auto-fix was applied
+                if (validation.fixed) {
+                    console.log(
+                        "[loadDiagram] Auto-fixed XML issues:",
+                        validation.fixes,
+                    )
+                    xmlToLoad = validation.fixed
+                }
+            }
+
+            // Keep chartXML in sync even when diagrams are injected (e.g., display_diagram tool)
+            chartXMLRef.current = xmlToLoad
+            setChartXML(xmlToLoad)
+
+            if (drawioRef.current) {
+                drawioRef.current.load({
+                    xml: xmlToLoad,
+                })
+            }
+
+            return null
+        },
+        [],
+    )
+
+    const handleDiagramAutoSave = useCallback((xml: string) => {
+        const nextXml = xml || ""
+        if (chartXMLRef.current === nextXml) return
+
+        chartXMLRef.current = nextXml
+        setChartXML((prev) => (prev === nextXml ? prev : nextXml))
+    }, [])
+
+    const { syncLocalXml } = useCrdtDiagram({
+        enabled: collaborationEnabled,
+        roomId: collaborationRoomId,
+        initialXml: chartXMLRef.current,
+        onRemoteXml: (remoteXml) => {
+            const nextXml = remoteXml || ""
+            if (!nextXml || nextXml === chartXMLRef.current) return
+
+            // Skip validation for replicated state to avoid mutating peer payloads.
+            loadDiagram(nextXml, true)
+        },
+    })
+
+    useEffect(() => {
+        if (!collaborationEnabled) return
+        syncLocalXml(chartXML)
+    }, [chartXML, collaborationEnabled, syncLocalXml])
 
     // Restore diagram when DrawIO becomes ready after remount (e.g., theme/UI change)
     useEffect(() => {
@@ -237,44 +319,6 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
         }
     }
 
-    const loadDiagram = (
-        chart: string,
-        skipValidation?: boolean,
-    ): string | null => {
-        let xmlToLoad = chart
-
-        // Validate XML structure before loading (unless skipped for internal use)
-        if (!skipValidation) {
-            const validation = validateAndFixXml(chart)
-            if (!validation.valid) {
-                console.warn(
-                    "[loadDiagram] Validation error:",
-                    validation.error,
-                )
-                return validation.error
-            }
-            // Use fixed XML if auto-fix was applied
-            if (validation.fixed) {
-                console.log(
-                    "[loadDiagram] Auto-fixed XML issues:",
-                    validation.fixes,
-                )
-                xmlToLoad = validation.fixed
-            }
-        }
-
-        // Keep chartXML in sync even when diagrams are injected (e.g., display_diagram tool)
-        setChartXML(xmlToLoad)
-
-        if (drawioRef.current) {
-            drawioRef.current.load({
-                xml: xmlToLoad,
-            })
-        }
-
-        return null
-    }
-
     const handleDiagramExport = (data: any) => {
         // Handle PNG export for VLM validation
         if (pngResolverRef.current && data.data?.startsWith("data:image/png")) {
@@ -296,6 +340,7 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
         }
 
         const extractedXML = extractDiagramXML(data.data)
+        chartXMLRef.current = extractedXML
         setChartXML(extractedXML)
         setLatestSvg(data.data)
 
@@ -478,6 +523,7 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
                 diagramHistory,
                 setDiagramHistory,
                 loadDiagram,
+                handleDiagramAutoSave,
                 handleExport,
                 handleExportWithoutHistory,
                 resolverRef,

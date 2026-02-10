@@ -1,0 +1,7 @@
+node_modules
+dist
+*.log
+.env
+.DS_Store
+drizzle/*.sql
+!drizzle/0000_fair_mother_askani.sql

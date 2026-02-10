@@ -1,0 +1,84 @@
+TASK: Write unit tests for the RBAC permission system
+
+PROJECT: canvas-A-I-O (Next.js 16 + React 19 + Vitest)
+WORKING DIR: /mnt/c/Users/Kratos/canvas-A-I-O
+
+CONTEXT:
+We have a role-based permission system with 4 roles: owner > admin > editor (default) > viewer.
+Tests use Vitest. Existing test files are in tests/unit/.
+
+FILES TO READ FOR CONTEXT:
+1. hooks/use-permissions.ts - client-side permission derivation logic
+2. lib/permissions.ts - server-side permission types and requirePermission()
+3. lib/auth.ts - access control statement definition
+4. tests/unit/utils.test.ts - example of existing test patterns (uses `describe`, `expect`, `it` from vitest)
+
+CREATE FILE: tests/unit/permissions.test.ts
+
+TEST CASES TO IMPLEMENT:
+
+1. **Role hierarchy tests** - Test that the permission derivation logic is correct:
+   - viewer: only isViewer=true, all create/edit/delete/share = false
+   - editor: isEditor=true, isViewer=true, canCreate/canEdit/canDelete = true, canShare = true, canManageUsers = false
+   - admin: isAdmin=true, isEditor=true, isViewer=true, canManageUsers = true, canManageSettings = true
+   - owner: isOwner=true, isAdmin=true, isEditor=true, isViewer=true, all = true
+
+2. **Permission derivation per role**:
+   - viewer: canCreateDiagram=false, canEditDiagram=false, canDeleteDiagram=false, canShareDiagram=false
+   - editor: canCreateDiagram=true, canEditDiagram=true, canDeleteDiagram=true, canShareDiagram=true
+   - admin: same as editor + canManageUsers=true + canManageSettings=true
+   - owner: same as admin (all true)
+
+3. **Default role handling**:
+   - When role is undefined/null, should default to "viewer" behavior
+
+4. **AppRole type**:
+   - Test that AppRole union type matches expected values
+
+IMPORTANT NOTES:
+- The usePermissions hook uses authClient.useSession() which is React-specific.
+  DO NOT try to test the hook directly (it needs React context).
+  Instead, EXTRACT the permission derivation logic and test it as pure functions.
+
+  The simplest approach: Test the LOGIC by reimplementing the derivation in the test:
+  ```typescript
+  function derivePermissions(role: string) {
+    const isOwner = role === "owner"
+    const isAdmin = role === "admin" || isOwner
+    const isEditor = role === "editor" || isAdmin
+    const isViewer = role === "viewer" || isEditor
+    return {
+      role, isOwner, isAdmin, isEditor, isViewer,
+      canCreateDiagram: isEditor,
+      canEditDiagram: isEditor,
+      canDeleteDiagram: isEditor,
+      canShareDiagram: isOwner || role === "admin" || role === "editor",
+      canManageUsers: isAdmin,
+      canManageSettings: isAdmin,
+    }
+  }
+  ```
+  Then test this function with different role inputs.
+
+- For PermissionError, import from lib/permissions.ts and test:
+  - PermissionError has correct name and statusCode
+  - Constructor sets message and statusCode properly
+
+- DO NOT test requirePermission() directly (it needs auth session mocking which is complex).
+  Focus on the PURE LOGIC tests.
+
+PATTERN:
+```typescript
+import { describe, expect, it } from "vitest"
+import { PermissionError } from "@/lib/permissions"
+import type { AppRole } from "@/lib/permissions"
+
+describe("Permission system", () => {
+  // ... tests here
+})
+```
+
+After creating the test file:
+1. Run: npx vitest run tests/unit/permissions.test.ts
+2. Verify all tests pass
+3. Run: npx biome check --write tests/unit/permissions.test.ts

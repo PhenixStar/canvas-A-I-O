@@ -1,0 +1,21 @@
+Research WebSocket server architecture for Next.js 16 App Router. Analyze these specific aspects:
+
+1. Server implementation: Next.js API routes as WebSocket server vs separate Node.js server
+2. Connection management: Handling 100+ concurrent connections, connection pooling
+3. Authentication: WebSocket auth using Better Auth sessions, validating session cookies
+4. Scaling: Horizontal scaling with multiple server instances, Redis pub/sub
+5. Deployment: VPS deployment considerations (sgp1-02: 209.38.58.83), process management
+6. Libraries: Recommended WebSocket libraries for Next.js (ws, socket.io, y-websocket)
+
+Current stack:
+- Next.js 16 with App Router
+- Better Auth for sessions
+- PostgreSQL on VPS
+- Target: 5+ concurrent users, <200ms sync latency
+
+Report format:
+- Recommended server architecture with diagrams
+- Code examples for auth and connection handling
+- Scaling strategy for production
+- Deployment configuration
+- Library versions and alternatives

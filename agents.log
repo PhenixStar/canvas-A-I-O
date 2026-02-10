@@ -1,0 +1,146 @@
+# Agents Log
+
+## Session: 2026-02-09T07:28:00Z
+Goal: Phase 4 Sprint 3 - Real-time Collaboration Planning
+Project: canvas-A-I-O
+PRD Target: docs/prds/sprint3-realtime-collaboration.md
+
+
+### Spawned: yjs-research - $(date -u +%H:%M)
+Type: research
+Prompt: .codex-prompts/agent-yjs-research.txt
+Reasoning: xhigh
+Sandbox: read-only
+
+### Spawned: websocket-research - 07:30
+Type: research
+Prompt: .codex-prompts/agent-websocket-research.txt
+Reasoning: xhigh
+Sandbox: read-only
+
+### Spawned: offline-sync-research - 07:30
+Type: research
+Prompt: .codex-prompts/agent-offline-sync-research.txt
+Reasoning: xhigh
+Sandbox: read-only
+
+### Spawned: multiplayer-ux-research - 07:31
+Type: research
+Prompt: .codex-prompts/agent-multiplayer-ux-research.txt
+Reasoning: xhigh
+Sandbox: read-only
+
+---
+
+### Research Complete - 10:47
+All 4 agents completed research (3+ hours each, stuck in interactive mode)
+Pivoted to direct research via WebSearch
+
+### Synthesis Complete - 10:50
+Combined findings from WebSearch results
+Created PRD: docs/prds/sprint3-realtime-collaboration.md
+
+Key Findings:
+- Yjs XmlFragment supports XML documents (draw.io compatible)
+- Separate WebSocket server needed (not Next.js API routes)
+- y-indexeddb for offline persistence (built-in Yjs support)
+- Liveblocks/Tiptap/React Flow for UX patterns
+
+Next: User review → Approval → Implementation
+
+---
+
+### Implementation Phase 1 - 11:04
+User approved PRD. Starting implementation.
+
+### Spawned: crdt-integration - 11:04
+Type: implementation
+Prompt: docs/prds/sprint3-realtime-collaboration.md - Phase 1 tasks
+Reasoning: xhigh
+Sandbox: workspace-write
+
+---
+
+### Complete: crdt-integration - 12:40
+Files created:
+- lib/crdt.ts (2362 bytes) - Yjs document + providers
+- hooks/use-crdt-diagram.ts (4667 bytes) - React sync hook
+
+Dependencies installed (90 packages):
+- yjs@^13.6.20
+- y-indexeddb@^9.0.12  
+- y-websocket@^2.0.4
+
+Verification:
+- TypeScript: 0 errors (after fixing status type)
+- Tests: 84/84 pass
+
+Manual test blocked: Needs WebSocket server (Phase 2)
+
+---
+
+### Decisions - 15:54
+1. Storage: Binary BYTEA (PostgreSQL native)
+2. Room naming: diagram-{id}
+3. Health port: 3002
+
+### Spawned: websocket-server - 15:54
+Type: implementation
+Prompt: plans/260209-1252-phase2-websocket-server/phase-02-websocket-server.md
+Reasoning: xhigh
+Sandbox: workspace-write
+
+---
+
+### Complete: websocket-server - 20:12
+Files created:
+- server/websocket-server.ts (9126 bytes) - Hocuspocus config
+- server/auth-middleware.ts (3570 bytes) - Better Auth validation
+- server/database-adapter.ts - PostgreSQL persistence
+- config/ecosystem.config.cjs (823 bytes) - PM2 config
+- config/nginx-websocket.conf (920 bytes) - Reverse proxy
+- scripts/setup-websocket-db.ts - DB migration helper
+- scripts/test-websocket.sh - Smoke test script
+- tests/unit/websocket-auth-utils.test.ts - Auth tests (11 new)
+
+Dependencies added:
+- @hocuspocus/server, @hocuspocus/transformer, y-websocket
+
+Verification:
+- TypeScript: 0 errors
+- Tests: 95/95 pass (84 + 11)
+
+Deployment pending: VPS setup (sgp1-02)
+
+---
+
+### Pushed: sprint3-phase1-2 - 20:20
+Commit: 8153156
+Files: 20 changed, +3615 lines
+Tests: 95/95 pass (84 + 11)
+
+Deployment pending:
+- PostgreSQL schema: drizzle/0000_fair_mother_askani.sql
+- VPS setup: sgp1-02 (209.38.58.83) - SSH key not configured
+
+---
+
+### Deployment Attempt - 01:14
+VPS: sgp1-02 (209.38.58.83:2222)
+Status: PostgreSQL 16.11 installed ✅
+- Database 'canvas' created with user
+- Schema migrated (RBAC + Yjs tables)
+- Node.js 20.20.0 installed ✅
+- PM2 installed ✅
+- Server files copied to /root/ ✅
+
+Blocked: npm install - VPS out of memory (512MB RAM)
+Resolution: Upgrade VPS to 1GB+ OR use managed service
+
+Database credentials saved in deployment guide
+
+### Pushed: deployment-guide - 01:15
+Commit: a693c4a
+Added WebSocket deployment instructions
+
+---

@@ -1,0 +1,21 @@
+Research offline sync queue strategies for collaborative diagram editing. Analyze these specific aspects:
+
+1. Queue architecture: In-memory vs IndexedDB vs custom queue, durability guarantees
+2. Conflict detection: Detecting conflicts when reconnecting after offline edits
+3. Merge strategies: How to merge offline changes with server state, user prompts
+4. Operation logging: What operations to log (CRUD on nodes/edges), granularity
+5. Storage limits: IndexedDB quotas, cleanup strategies for old data
+6. Error recovery: Handling sync failures, retry logic, user notification
+
+Current context:
+- Browser-based diagram editor (draw.io XML)
+- Yjs CRDT for sync (when online)
+- Better Auth sessions
+- Target: Seamless online/offline transitions
+
+Report format:
+- Recommended queue architecture with code patterns
+- Conflict resolution workflow
+- Storage strategy and limits
+- Error handling and recovery
+- Testing approach for offline scenarios

@@ -1,9 +1,9 @@
 "use client"
 import { usePathname, useRouter } from "next/navigation"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { DrawIoEmbed } from "react-drawio"
 import type { ImperativePanelHandle } from "react-resizable-panels"
 import ChatPanel from "@/components/chat-panel"
+import { DiagramEditor } from "@/components/diagram-editor"
 import {
     ResizableHandle,
     ResizablePanel,
@@ -13,8 +13,7 @@ import { useDiagram } from "@/contexts/diagram-context"
 import { i18n, type Locale } from "@/lib/i18n/config"
 
 export default function Home() {
-    const { drawioRef, handleDiagramExport, onDrawioLoad, resetDrawioReady } =
-        useDiagram()
+    const { onDrawioLoad, resetDrawioReady } = useDiagram()
     const router = useRouter()
     const pathname = usePathname()
     // Extract current language from pathname (e.g., "/zh/about" → "zh")
@@ -161,48 +160,17 @@ export default function Home() {
                     defaultSize={isMobile ? 50 : 67}
                     minSize={20}
                 >
-                    <div
-                        className={`h-full relative ${
-                            isMobile ? "p-1" : "p-2"
-                        }`}
-                    >
-                        <div className="h-full rounded-xl overflow-hidden shadow-soft-lg border border-border/30 relative">
-                            {isLoaded && (
-                                <div
-                                    className={`h-full w-full ${isDrawioReady ? "" : "invisible absolute inset-0"}`}
-                                >
-                                    <DrawIoEmbed
-                                        key={`${drawioUi}-${darkMode}-${currentLang}-${isElectron}`}
-                                        ref={drawioRef}
-                                        onExport={handleDiagramExport}
-                                        onLoad={handleDrawioLoad}
-                                        baseUrl={drawioBaseUrl}
-                                        urlParameters={{
-                                            ui: drawioUi,
-                                            spin: false,
-                                            libraries: false,
-                                            saveAndExit: false,
-                                            noSaveBtn: true,
-                                            noExitBtn: true,
-                                            dark: darkMode,
-                                            lang: currentLang,
-                                            // Enable offline mode in Electron to disable external service calls
-                                            ...(isElectron && {
-                                                offline: true,
-                                            }),
-                                        }}
-                                    />
-                                </div>
-                            )}
-                            {(!isLoaded || !isDrawioReady) && (
-                                <div className="h-full w-full bg-background flex items-center justify-center">
-                                    <span className="text-muted-foreground">
-                                        Draw.io panel is loading...
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <DiagramEditor
+                        drawioUi={drawioUi}
+                        darkMode={darkMode}
+                        currentLang={currentLang}
+                        isMobile={isMobile}
+                        isLoaded={isLoaded}
+                        isDrawioReady={isDrawioReady}
+                        isElectron={isElectron}
+                        drawioBaseUrl={drawioBaseUrl}
+                        onDrawioLoad={handleDrawioLoad}
+                    />
                 </ResizablePanel>
 
                 <ResizableHandle withHandle />
