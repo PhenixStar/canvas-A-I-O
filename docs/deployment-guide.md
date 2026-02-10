@@ -704,3 +704,112 @@ docker-compose -f docker-compose.prod.yml up -d caddy
 ---
 
 This deployment guide provides comprehensive instructions for deploying and maintaining AIO Canvas in production. For additional support, refer to the [project documentation](../docs/) or open an issue in the [GitHub repository](https://github.com/PhenixStar/canvas-A-I-O).
+---
+
+## WebSocket Server Deployment (Sprint 3 Phase 2)
+
+### Current Status (2026-02-11)
+
+**VPS:** sgp1-02 (209.38.58.83:2222) - Ubuntu 24.04
+**Database:** PostgreSQL 16.11 ✅ installed
+**Status:** Schema migrated, npm install blocked (512MB RAM insufficient)
+
+### Database Credentials
+
+```
+Host: localhost:5432
+Database: canvas
+User: canvas
+Password: 1482f4705e6bf460c331bffb3b49337350e66a5d7925dd72986ca7ccd5b03f7e
+
+Connection string:
+DATABASE_URL=postgresql://canvas:1482f4705e6bf460c331bffb3b49337350e66a5d7925dd72986ca7ccd5b03f7e@localhost:5432/canvas
+```
+
+### Deployment Options
+
+#### Option A: Upgrade VPS (Recommended)
+
+Upgrade sgp1-02 to 1GB+ RAM, then:
+
+```bash
+# SSH into VPS
+ssh -i ~/.ssh/id_ed25519_alaa -p 2222 root@209.38.58.83
+
+# Create environment file
+cat > /root/canvas-server/.env << 'ENVEOF'
+DATABASE_URL=postgresql://canvas:1482f4705e6bf460c331bffb3b49337350e66a5d7925dd72986ca7ccd5b03f7e@localhost:5432/canvas
+BETTER_AUTH_URL=http://localhost:3000
+NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_SECRET=$(openssl rand -hex 32)
+PORT=3001
+NODE_ENV=production
+ENVEOF
+
+# Install dependencies (requires ~1GB RAM)
+cd /root/canvas-server
+npm install
+
+# Start with PM2
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 startup
+```
+
+#### Option B: Managed Service
+
+Deploy to Railway/Render with PostgreSQL addon:
+
+1. Create project from GitHub repo
+2. Add PostgreSQL service
+3. Set environment variables (DATABASE_URL, BETTER_AUTH_SECRET)
+4. Deploy — platform handles PM2 and scaling
+
+**Advantage:** Horizontal scaling, SSL, zeroOps.
+
+### Verification
+
+```bash
+# Check WebSocket server
+pm2 status
+pm2 logs canvas-ws
+
+# Test health endpoint
+curl http://localhost:3002/health
+
+# Check database
+psql -U canvas -d canvas -c "\dt"
+
+# Test WebSocket connection (from local machine)
+wscat -c ws://209.38.58.83:3001/diagram-test-room
+```
+
+### Nginx Configuration
+
+Copy `config/nginx-websocket.conf` to Nginx:
+
+```bash
+scp config/nginx-websocket.conf root@209.38.58.83:/etc/nginx/sites-available/websocket
+ln -s /etc/nginx/sites-available/websocket /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+```
+
+### Troubleshooting
+
+**PM2 won't start:**
+```bash
+pm2 logs canvas-ws --lines 50
+# Check database
+psql -U canvas -d canvas -c "SELECT 1"
+```
+
+**WebSocket connection fails:**
+```bash
+netstat -tlnp | grep 3001
+ufw allow 3001/tcp  # If firewall active
+```
+
+**Out of memory:**
+- Upgrade VPS to 1GB+ RAM (minimum for npm install)
+- Or use managed service (Railway/Render)
+
