@@ -18,7 +18,9 @@ import { useAutoSave } from "@/hooks/use-auto-save"
 import { useCrdtDiagram } from "@/hooks/use-crdt-diagram"
 import { useDiagramHistory } from "@/hooks/use-diagram-history"
 import { useRecentFiles } from "@/hooks/use-recent-files"
+import { useUserPresence } from "@/hooks/use-user-presence"
 import { getApiEndpoint } from "@/lib/base-path"
+import type { UserPresence } from "@/types/presence"
 import {
     extractDiagramXML,
     isRealDiagram,
@@ -77,6 +79,15 @@ interface DiagramContextType {
         fileName: string
         thumbnail?: string
     }) => Promise<void>
+    // Multiplayer presence properties
+    presenceState: {
+        localUser: UserPresence | null
+        remoteUsers: Map<number, UserPresence>
+        allUsers: UserPresence[]
+        status: "connecting" | "connected" | "disconnected"
+        updateCursor: (x: number, y: number) => void
+        updateSelection: (selectedIds: string[]) => void
+    }
 }
 
 const DiagramContext = createContext<DiagramContextType | undefined>(undefined)
@@ -198,7 +209,7 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
         setChartXML((prev) => (prev === nextXml ? prev : nextXml))
     }, [])
 
-    const { syncLocalXml } = useCrdtDiagram({
+    const { syncLocalXml, awareness } = useCrdtDiagram({
         enabled: collaborationEnabled,
         roomId: collaborationRoomId,
         initialXml: chartXMLRef.current,
@@ -209,6 +220,12 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
             // Skip validation for replicated state to avoid mutating peer payloads.
             loadDiagram(nextXml, true)
         },
+    })
+
+    // Multiplayer presence tracking using awareness from CRDT
+    const presenceState = useUserPresence({
+        enabled: collaborationEnabled,
+        awareness,
     })
 
     useEffect(() => {
@@ -560,6 +577,15 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
                 },
                 saveNow,
                 addRecentFile,
+                // Multiplayer presence state
+                presenceState: {
+                    localUser: presenceState.localUser,
+                    remoteUsers: presenceState.remoteUsers,
+                    allUsers: presenceState.allUsers,
+                    status: presenceState.status,
+                    updateCursor: presenceState.updateCursor,
+                    updateSelection: presenceState.updateSelection,
+                },
             }}
         >
             {children}
@@ -606,4 +632,13 @@ export function useRecentFilesFromContext() {
         ...recentFilesState,
         addRecentFile,
     }
+}
+
+/**
+ * Hook to access multiplayer presence state from diagram context
+ * Provides convenient access to real-time collaboration features
+ */
+export function usePresence() {
+    const { presenceState } = useDiagram()
+    return presenceState
 }

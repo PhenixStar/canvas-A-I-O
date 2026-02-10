@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { WebsocketProvider } from "y-websocket"
 import type * as Y from "yjs"
 import {
     type CrdtConnection,
@@ -28,6 +29,7 @@ interface UseCrdtDiagramReturn {
     isSynced: boolean
     roomId: string
     syncLocalXml: (xml: string) => void
+    awareness: WebsocketProvider["awareness"] | null
 }
 
 export function useCrdtDiagram({
@@ -168,5 +170,6 @@ export function useCrdtDiagram({
         isSynced,
         roomId: normalizedRoomId,
         syncLocalXml,
+        awareness: connectionRef.current?.awareness || null,
     }
 }

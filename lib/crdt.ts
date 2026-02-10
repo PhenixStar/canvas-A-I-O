@@ -18,6 +18,7 @@ export interface CrdtConnection {
     wsProvider: WebsocketProvider
     indexeddbProvider?: IndexeddbPersistence
     roomId: string
+    awareness: WebsocketProvider["awareness"]
     destroy: () => void
 }
 
@@ -77,6 +78,7 @@ export function createCrdtConnection(
         wsProvider,
         indexeddbProvider,
         roomId,
+        awareness: wsProvider.awareness,
         destroy: () => {
             indexeddbProvider?.destroy()
             wsProvider.destroy()
